@@ -1,0 +1,29 @@
+from datetime import datetime
+
+from sqlalchemy import BigInteger, Column, DateTime, ForeignKey, String, Table, func
+from sqlalchemy.orm import Mapped, mapped_column
+
+from backend.core.base import Base
+
+
+class Tag(Base):
+    __tablename__ = "tags"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(String(50), nullable=False, unique=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now())
+
+
+info_tags_table = Table(
+    "info_tags",
+    Base.metadata,
+    Column("info_id", BigInteger, ForeignKey("raw_infos.id", ondelete="CASCADE"), primary_key=True),
+    Column("tag_id", BigInteger, ForeignKey("tags.id", ondelete="CASCADE"), primary_key=True),
+)
+
+action_tags_table = Table(
+    "action_tags",
+    Base.metadata,
+    Column("action_id", BigInteger, ForeignKey("action_items.id", ondelete="CASCADE"), primary_key=True),
+    Column("tag_id", BigInteger, ForeignKey("tags.id", ondelete="CASCADE"), primary_key=True),
+)

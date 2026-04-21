@@ -1,0 +1,17 @@
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+*.egg
+.venv/
+.env
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+alembic/versions/*.py
+!alembic/versions/.gitkeep
+*.db
+*.sqlite3
+.DS_Store
