@@ -65,14 +65,14 @@
 
 **优先级：P0**
 
-- [ ] 安装并启动 MySQL 8.0+（建议用 Docker：`docker run -d -p 3306:3306 -e MYSQL_ROOT_PASSWORD=root -e MYSQL_DATABASE=info_butler mysql:8.0`）
-- [ ] 创建数据库和用户：
+- [✅] 安装并启动 MySQL 8.0+（建议用 Docker：`docker run -d -p 3306:3306 -e MYSQL_ROOT_PASSWORD=root -e MYSQL_DATABASE=info_butler mysql:8.0`）
+- [✅] 创建数据库和用户：
   ```sql
   CREATE USER 'info_butler'@'%' IDENTIFIED BY 'butler_pass';
   GRANT ALL PRIVILEGES ON info_butler.* TO 'info_butler'@'%';
   FLUSH PRIVILEGES;
   ```
-- [ ] 安装并启动 Redis 7.0+（Docker：`docker run -d -p 6379:6379 redis:7-alpine`）
+- [✅] 安装并启动 Redis 7.0+（Docker：`docker run -d -p 6379:6379 redis:7-alpine`）
 
 ### 3. 填写 .env 文件
 
