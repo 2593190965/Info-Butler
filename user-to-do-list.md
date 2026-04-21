@@ -117,7 +117,7 @@ DIFY_WORKFLOW_ID=your-workflow-id
 | 2 | MySQL + Redis 本地部署 | ✅ 已完成 | MySQL:3306, Redis:6379(DB1) |
 | 3 | .env 文件配置 | ✅ 已完成 | 全部环境变量已填入 |
 | 4 | Vue3 开发环境 | ✅ 已完成 | 前端已创建并运行在 5173 |
-| 5 | 微信/钉钉机器人接入 | ⬜ 待完成 | Phase 3+ 需要 |
+| 5 | 微信/钉钉机器人接入 | ✅ 已完成 | 飞书 Webhook 已接入 |
 
 ---
 

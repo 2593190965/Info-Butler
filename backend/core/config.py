@@ -22,6 +22,8 @@ class Settings(BaseSettings):
     dify_api_key: str = ""
     dify_workflow_id: str = ""
 
+    feishu_webhook_url: str = ""
+
     @property
     def mysql_dsn(self) -> str:
         return (

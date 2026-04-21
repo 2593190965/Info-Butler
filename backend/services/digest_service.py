@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from backend.clients.dify_client import dify_client
+from backend.clients.feishu_client import feishu_client
 from backend.clients.scraper_client import scraper_client
 from backend.models.action_item import ActionItem
 from backend.models.raw_info import RawInfo
@@ -91,16 +92,41 @@ async def process_digest_sync(db: AsyncSession, raw_info: RawInfo) -> None:
 
         await db.commit()
 
+        action_items_list = [{"content": a.content, "priority": a.priority} for a in validated.action_items]
+        tag_names = validated.tags
+
+        await feishu_client.send_digest_summary(
+            title=raw_info.title or "",
+            summary=validated.summary,
+            tags=tag_names,
+            action_items=action_items_list,
+            status="done",
+        )
+
     except ValueError as e:
         raw_info.status = "failed"
         raw_info.error_msg = str(e)
         await db.commit()
         logger.error(f"Dify call failed for task {raw_info.task_id}: {e}")
+        await feishu_client.send_digest_summary(
+            title=raw_info.title or "",
+            summary="",
+            tags=[],
+            action_items=[],
+            status="failed",
+        )
     except Exception as e:
         raw_info.status = "failed"
         raw_info.error_msg = f"Unexpected error: {e}"
         await db.commit()
         logger.error(f"Unexpected error processing task {raw_info.task_id}: {e}")
+        await feishu_client.send_digest_summary(
+            title=raw_info.title or "",
+            summary="",
+            tags=[],
+            action_items=[],
+            status="failed",
+        )
 
 
 async def get_digest_by_task_id(db: AsyncSession, task_id: str) -> RawInfo | None:
