@@ -69,7 +69,7 @@ async def batch_update(
     _user: str = Depends(get_current_user),
 ):
     count = await batch_update_actions(db=db, ids=body.ids, status=body.status)
-    return {"code": 0, "data": {"updated_count": count}, "message": "ok"}
+    return {"updated_count": count}
 
 
 @router.patch("/{action_id}", response_model=ActionItemResponse)

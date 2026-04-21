@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.api.deps import get_current_user
+from backend.core.config import settings
 from backend.core.database import get_db
 from backend.schemas.digest import (
     DigestAccepted,
@@ -16,6 +17,7 @@ from backend.services.digest_service import (
     list_digests,
     process_digest_sync,
 )
+from backend.workers.arq_client import enqueue_digest
 
 router = APIRouter()
 
@@ -37,12 +39,15 @@ async def create_digest(
         raw_info.source_url = body.content
         await db.commit()
 
-    try:
-        await process_digest_sync(db, raw_info)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Processing failed: {e}")
+    if settings.app_env == "production":
+        job_id = await enqueue_digest(raw_info.task_id)
+    else:
+        try:
+            await process_digest_sync(db, raw_info)
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Processing failed: {e}")
 
-    return DigestAccepted(task_id=raw_info.task_id, status="done")
+    return DigestAccepted(task_id=raw_info.task_id, status="processing")
 
 
 @router.get("/{task_id}", response_model=DigestResponse)

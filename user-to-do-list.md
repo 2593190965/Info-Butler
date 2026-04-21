@@ -113,8 +113,23 @@ DIFY_WORKFLOW_ID=your-workflow-id
 
 | # | 任务 | 状态 | 备注 |
 |---|------|------|------|
-| 1 | Dify Workflow 搭建 | ⬜ 待完成 | 见上方详细步骤 |
-| 2 | MySQL + Redis 本地部署 | ⬜ 待完成 | 推荐 Docker |
-| 3 | .env 文件配置 | ⬜ 待完成 | 等待任务 1、2 完成 |
-| 4 | Vue3 开发环境 | ⬜ 待完成 | Phase 2 需要 |
-| 5 | 机器人接入 | ⬜ 待完成 | Phase 3 需要 |
+| 1 | Dify Workflow 搭建 | ✅ 已完成 | 已配置 API Key + Workflow ID |
+| 2 | MySQL + Redis 本地部署 | ✅ 已完成 | MySQL:3306, Redis:6379(DB1) |
+| 3 | .env 文件配置 | ✅ 已完成 | 全部环境变量已填入 |
+| 4 | Vue3 开发环境 | ✅ 已完成 | 前端已创建并运行在 5173 |
+| 5 | 微信/钉钉机器人接入 | ⬜ 待完成 | Phase 3+ 需要 |
+
+---
+
+## Phase 3 用户任务
+
+### 8. Dify Workflow 输出质量优化
+
+**优先级：P1 — 提升 AI 处理效果**
+
+当前系统已可运行，建议优化以提升输出质量：
+- [ ] 检查 Dify Workflow 的 prompt 是否合理（摘要/行动项/标签三个节点）
+- [ ] 测试边界 case：超长文本（>10000字）、特殊字符、纯 URL、空内容
+- [ ] 调整输出格式约束，确保 JSON 结构稳定
+- [ ] 确认 action_items 中 priority 字段始终为 high/medium/low
+- [ ] 测试中文/英文混合内容的处理效果
