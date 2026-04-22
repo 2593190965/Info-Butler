@@ -4,14 +4,15 @@
 
     <n-space class="filter-bar" align="center" :wrap="true">
       <n-input v-model:value="keyword" placeholder="搜索关键词" clearable style="width: 200px" />
-      <n-select v-model:value="statusFilter" :options="statusOptions" placeholder="状态筛选" clearable
-        style="width: 150px" />
+      <n-select v-model:value="statusFilter" :options="statusOptions" placeholder="状态筛选" clearable style="width: 150px"
+        @update:value="onStatusChange" />
       <n-button type="primary" @click="fetchData">查询</n-button>
     </n-space>
 
     <n-spin :show="loading">
       <div v-if="items.length" class="card-list">
-        <n-card v-for="item in items" :key="item.id" hoverable class="info-card" @click="$router.push(`/digest/${item.task_id}`)">
+        <n-card v-for="item in items" :key="item.id" hoverable class="info-card"
+          @click="$router.push(`/digest/${item.task_id}`)">
           <template #header>
             <n-space justify="space-between" align="center">
               <span class="card-title">{{ item.title || '无标题' }}</span>
@@ -24,9 +25,9 @@
           <template #footer>
             <n-space justify="space-between">
               <n-space>
-                <n-tag v-for="tag in (item.tags || [])"
-                  :key="typeof tag === 'string' ? tag : tag.name || tag.id" size="small" round type="info"
-                  @click.stop="filterByTag(typeof tag === 'string' ? tag : tag.name || tag)">
+                <n-tag v-for="tag in (item.tags || [])" :key="typeof tag === 'string' ? tag : tag.name || tag.id"
+                  :type="isTagActive(typeof tag === 'string' ? tag : tag.name || tag) ? 'success' : 'info'" size="small"
+                  round @click.stop="filterByTag(typeof tag === 'string' ? tag : tag.name || tag)">
                   {{ typeof tag === 'string' ? tag : tag.name || tag }}
                 </n-tag>
               </n-space>
@@ -49,11 +50,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
 import api from '@/api'
-
-const router = useRouter()
-const route = useRoute()
 
 const loading = ref(false)
 const items = ref<any[]>([])
@@ -61,11 +58,14 @@ const total = ref(0)
 const page = ref(1)
 const pageSize = ref(20)
 const keyword = ref('')
-const statusFilter = ref<string | null>(null)
+const statusFilter = ref<string | undefined>(undefined)
+const tagFilter = ref('')
 
-const statusOptions = [
-  { label: '已完成', value: 'done' },
+const statusOptions: { label: string; value: string | undefined }[] = [
+  { label: '全部', value: undefined },
   { label: '处理中', value: 'processing' },
+  { label: '已完成', value: 'done' },
+  { label: '已忽略', value: 'ignored' },
   { label: '失败', value: 'failed' },
 ]
 
@@ -79,8 +79,22 @@ function statusLabel(status: string): string {
   return map[status] || status
 }
 
+function onStatusChange() {
+  page.value = 1
+  fetchData()
+}
+
+function isTagActive(tagName: string): boolean {
+  return tagFilter.value === tagName
+}
+
 function filterByTag(tagName: string) {
-  keyword.value = tagName
+  if (tagFilter.value === tagName) {
+    tagFilter.value = ''
+  } else {
+    tagFilter.value = tagName
+  }
+  page.value = 1
   fetchData()
 }
 
@@ -90,6 +104,7 @@ async function fetchData() {
     const params: any = { page: page.value, page_size: pageSize.value }
     if (keyword.value) params.keyword = keyword.value
     if (statusFilter.value) params.status = statusFilter.value
+    if (tagFilter.value) params.tags = tagFilter.value
 
     const res: any = await api.get('/digest', { params })
     items.value = res.items || []
@@ -135,6 +150,7 @@ onMounted(() => fetchData())
   margin-bottom: 8px;
   display: -webkit-box;
   -webkit-line-clamp: 3;
+  line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }

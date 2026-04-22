@@ -34,7 +34,7 @@ async def batch_import(
             await db.commit()
 
         if settings.app_env == "production":
-            job_id = await enqueue_digest(raw_info.task_id)
+            _job_id = await enqueue_digest(raw_info.task_id)
         else:
             try:
                 await process_digest_sync(db, raw_info)
