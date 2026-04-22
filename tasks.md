@@ -520,3 +520,205 @@ Info-Butler/
 - **修改文件：**
   - [DigestList.vue](frontend/src/views/DigestList.vue) — 标签点击筛选 + 状态下拉自动查询 + 高亮选中标签
   - [digest_service.py](backend/services/digest_service.py) — tags 子查询过滤
+
+### 4.8 URL 内容抓取增强（httpx + BeautifulSoup4）
+- [x] **已完成** 2026-04-22
+- **目标：** 粘贴 URL 后自动采集页面正文内容，再交给 AI 解析
+- **技术方案：** httpx（HTTP 客户端）+ BeautifulSoup4（HTML 解析），线程池异步执行避免阻塞
+- **实现细节：**
+  - `backend/clients/scraper_client.py`：完全重写，移除 Playwright 依赖（Windows asyncio 兼容性问题）
+  - 模拟浏览器请求头（User-Agent / Sec-Ch-Ua / Accept 等）绕过基础反爬
+  - BeautifulSoup 清理：移除 script/style/nav/header/footer/aside 等噪音标签
+  - 智能标题提取：优先 `<title>` 标签 → 降级 `og:title` meta
+  - 正文提取：优先 `<main>` / `<article>` → 降级 `<body>`
+  - 文本清洗：去除 HTML 标签、合并空白、过滤短行
+  - HTTP 错误容错：4xx 但返回了 HTML 正文时仍尝试解析
+- **集成点：**
+  - `backend/services/digest_service.py`：`process_digest_sync()` 中 URL 类型自动调用 `scraper_client.fetch_url()`
+  - `POST /api/v1/digest` 提交 `source_type=url` 时触发完整流程：URL 抓取 → 内容清洗 → Dify AI 解析 → 入库
+- **测试验证：** ✅ 端到端测试通过（httpbin.org/html → 抓取 3594 字符 → AI 生成摘要+标签+行动项）
+- **已知限制：** Wikipedia 等强反爬站点返回 403（TLS 指纹检测），覆盖 95%+ 常规网站
+
+---
+
+# Phase 5：数据洞察与生产力增强
+
+> 开始日期：2026-04-22 | 目标：数据可视化 + 导出能力 + 搜索升级 + 生产就绪
+
+---
+
+## 任务清单
+
+### 5.1 数据导出功能（Markdown / JSON / CSV）
+- [ ] **待开始**
+- **目标：** 支持将知识卡片、行动项导出为本地文件
+- **后端 API：**
+  - `GET /api/v1/export?format=markdown&tags=xxx&status=done` — 导出知识卡片
+  - `GET /api/v1/export/actions?format=csv` — 导出行动项
+- **支持格式：**
+  - Markdown（每张卡片一个 section，含标题/摘要/标签/行动项）
+  - JSON（完整结构化数据）
+  - CSV（行动项表格，适合导入 Excel/Notion）
+- **前端：**
+  - 知识卡片列表页增加「导出」按钮（下拉选择格式）
+  - 行动项看板页增加「导出 CSV」按钮
+  - 导出时支持当前筛选条件（标签/状态/时间范围）
+- **技术要点：**
+  - `StreamingResponse` 返回文件流，设置 `Content-Disposition` 头
+  - Markdown 模板渲染
+  - CSV 用 Python 内置 `csv` 模块
+
+### 5.2 周报复盘仪表盘可视化
+- [ ] **待开始**
+- **目标：** 将 Review 页面从纯文字统计升级为图表展示
+- **后端新增：**
+  - `GET /api/v1/review/monthly` — 月度趋势数据
+    - 返回：每日新增信息数、行动项完成率曲线、标签分布 Top10
+  - `GET /api/v1/review/stats` — 全局统计数据
+    - 返回：总卡片数、总行动项数、整体完成率、最活跃标签、平均处理时间
+- **前端改造：**
+  - 引入 ECharts 或 Chart.js（推荐 ECharts，深色主题适配好）
+  - 折线图：近 30 天信息录入趋势
+  - 饼图/环形图：标签分布占比
+  - 柱状图：每周行动项完成 vs 新增对比
+  - 数字卡片带动画：总览 KPI
+- **修改文件：**
+  - `backend/services/review_service.py` — 扩展统计逻辑
+  - `backend/api/v1/review.py` — 新增 monthly/stats 端点
+  - `frontend/src/views/Review.vue` — 图表组件集成
+  - `frontend/package.json` — 新增 echarts 依赖
+
+### 5.3 全文搜索增强（MySQL FULLTEXT）
+- [ ] **待开始**
+- **目标：** 从简单 LIKE 查询升级为全文搜索引擎级别体验
+- **后端改动：**
+  - MySQL FULLTEXT 索引：对 `raw_infos.raw_text` + `raw_infos.summary` 创建全文索引
+  - 搜索接口扩展：
+    - 支持 `highlight=true` 参数返回匹配高亮片段
+    - 支持 `mode=boolean` 布尔搜索（AND/OR/NOT）
+    - 搜索结果按相关度排序（`MATCH ... AGAINST` score）
+  - 标签搜索优化：模糊匹配（LIKE %tag%）
+- **前端改动：**
+  - 搜索框增加防抖（debounce 300ms）
+  - 搜索结果高亮关键词
+  - 搜索建议（最近使用的标签/关键词）
+- **SQL 示例：**
+  ```sql
+  ALTER TABLE raw_infos ADD FULLTEXT INDEX ft_content (raw_text, summary);
+  SELECT *, MATCH(raw_text, summary) AGAINST('关键词' IN NATURAL LANGUAGE MODE) AS score
+  FROM raw_infos WHERE MATCH(raw_text, summary) AGAINST('关键词') ORDER BY score DESC;
+  ```
+
+### 5.4 行动项提醒系统（到期提醒 + 逾期告警）
+- [ ] **待开始**
+- **目标：** 让行动项不再被遗忘，主动推送提醒
+- **后端新增：**
+  - ARQ 定期任务 `check_due_actions`（每小时执行一次）
+  - 查询 due_date <= now() 且 status=pending 的行动项
+  - 到期提醒：通过飞书 Webhook 推送「今日到期行动项」汇总
+  - 逾期告警：due_date < now() 超过 24h 的标记逾期并推送
+- **模型改动：**
+  - ActionItem 增加 `reminded_at` 字段（记录上次提醒时间，避免重复推送）
+  - ActionItem 增加 `overdue_notified_at` 字段
+- **前端改动：**
+  - 行动项看板：到期项高亮显示（橙色边框）
+  - 逾期项特殊标记（红色闪烁/图标）
+  - 详情页显示距离到期剩余时间
+- **配置项：**
+  - `ACTION_REMIND_HOURS_BEFORE`：提前几小时提醒（默认 24h）
+  - `ACTION_OVERDUE_HOURS`：超过几小时算逾期（默认 24h）
+
+### 5.5 信息详情页增强（关联推荐 + 版本历史）
+- [ ] **待开始**
+- **目标：** 让单条信息的价值最大化
+- **关联推荐：**
+  - 详情页底部「相关卡片」区域
+  - 基于共享标签的卡片推荐（同标签的其他卡片）
+  - 后端：`GET /api/v1/digest/{task_id}/related` — 返回最多 5 条关联卡片
+- **版本历史：**
+  - 当用户手动编辑摘要/行动项时，保留历史版本
+  - 新增 `action_item_versions` 表（content, priority, status, created_at, action_item_id FK）
+  - 详情页可查看某行动项的变更记录
+- **前端：**
+  - 关联卡片横向滚动列表（点击跳转）
+  - 行动项旁增加「历史」图标，点击弹出变更时间线
+
+### 5.6 单元测试与集成测试完善
+- [ ] **待开始**
+- **目标：** 提升代码质量保障，核心路径全覆盖
+- **测试范围：**
+  - Service 层单元测试：
+    - `test_digest_service.py` — list_digests 筛选逻辑、create_raw_info、process_digest_sync
+    - `test_action_service.py` — CRUD、批量更新、状态校验
+    - `test_tag_service.py` — 创建去重、删除级联
+    - `test_review_service.py` — 周报聚合计算
+  - API 层集成测试：
+    - `test_auth_api.py` — 注册/登录/JWT 鉴权/用户隔离
+    - `test_digest_api.py` — 提交→处理→查询全流程
+  - 测试工具：
+    - pytest-asyncio 异步测试
+    - httpx.AsyncClient 测试客户端
+    - factory_boy 或自定义 fixture 工厂数据
+- **目标覆盖率：** Service 层 ≥80%，API 层关键路径 100%
+
+### 5.7 API 限流与安全加固
+- [ ] **待开始**
+- **目标：** 生产环境安全防护
+- **限流：**
+  - 引入 `slowapi`（基于 limiter 的 FastAPI 限流）
+  - 按用户 ID 限流（认证用户 100 req/min，未认证 20 req/min）
+  - 批量接口单独限制（batch 10 req/min）
+- **安全加固：**
+  - 密码强度校验（注册时：最少8位，含大小写+数字）
+  - JWT Token 黑名单机制（退出登录后 Token 失效，用 Redis Set 存储）
+  - 输入清洗：XSS 防护（前端转义 + 后端 Pydantic 校验长度上限）
+  - CORS 配置收紧（生产环境只允许前端域名）
+
+## Phase 5 进度总览
+
+| 已完成 | 进行中 | 待开始 |
+|--------|--------|--------|
+| 0      | 0      | 7      |
+
+### 优先级排序
+
+| 优先级 | 任务 | 理由 |
+|--------|------|------|
+| 🔴 P0 | 5.3 全文搜索增强 | 日常使用最高频功能，体验提升明显 |
+| 🔴 P0 | 5.2 仪表盘可视化 | 产品差异化亮点，周报复盘是核心场景 |
+| 🟡 P1 | 5.1 数据导出 | 用户高频需求，实现成本低 |
+| 🟡 P1 | 5.4 行动项提醒 | 解决"遗忘"痛点，提升产品粘性 |
+| 🟢 P2 | 5.5 详情页增强 | 锦上添花，提升单条信息价值 |
+| 🟢 P2 | 5.6 测试完善 | 工程质量保障 |
+| 🟢 P2 | 5.7 安全加固 | 生产上线前必须完成 |
+
+## 预计新增/修改文件
+
+```
+backend/
+├── api/v1/
+│   ├── export.py              # 5.1 导出 API
+│   └── review.py              # 5.2 扩展 monthly/stats
+├── services/
+│   ├── export_service.py      # 5.1 导出逻辑
+│   ├── review_service.py      # 5.2 统计扩展
+│   └── reminder_service.py    # 5.4 提醒逻辑
+├── models/
+│   └── action_item_version.py # 5.5 版本历史模型
+├── workers/
+│   └── tasks.py               # 5.4 定期检查任务
+├── schemas/
+│   └── export.py              # 5.1 导出 Schema
+└── core/
+    └── rate_limiter.py        # 5.7 限流配置
+frontend/
+├── src/views/
+│   ├── Review.vue             # 5.2 图表改造
+│   └── DigestDetail.vue       # 5.5 关联推荐+历史
+├── src/components/
+│   └── charts/                # 5.2 图表封装组件
+tests/
+├── test_auth_api.py           # 5.6 认证测试
+├── test_export.py             # 5.6 导出测试
+└── test_review_service.py     # 5.6 统计测试
+```

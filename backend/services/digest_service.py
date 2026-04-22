@@ -38,10 +38,13 @@ async def process_digest_sync(db: AsyncSession, raw_info: RawInfo) -> None:
     text = raw_info.raw_text
     uid = raw_info.user_id
 
+    logger.info(f"Processing task {raw_info.task_id}: type={raw_info.source_type}, url={raw_info.source_url}")
+
     if raw_info.source_type == "url" and raw_info.source_url:
         try:
             result = await scraper_client.fetch_url(raw_info.source_url)
             text = result["text"] or text
+            logger.info(f"URL fetched for {raw_info.task_id}: title={result['title'][:50]}, text_len={len(text)}")
             if result["title"]:
                 raw_info.title = result["title"]
             await db.commit()
