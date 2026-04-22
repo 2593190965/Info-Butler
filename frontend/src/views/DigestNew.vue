@@ -74,15 +74,23 @@
           <n-text v-else depth="3">无行动项</n-text>
         </template>
       </n-card>
+
+      <div v-if="result.status === 'done'" class="detail-link">
+        <n-button text type="primary" @click="router.push(`/digest/${result.task_id}`)">
+          查看完整详情 →
+        </n-button>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, reactive } from 'vue'
+import { useRouter } from 'vue-router'
 import { useMessage } from 'naive-ui'
 import api from '@/api'
 
+const router = useRouter()
 const message = useMessage()
 const loading = ref(false)
 const polling = ref(false)
@@ -226,5 +234,10 @@ function handleReset() {
   font-size: 12px;
   color: #6c7086;
   font-family: monospace;
+}
+
+.detail-link {
+  text-align: center;
+  margin-top: 12px;
 }
 </style>

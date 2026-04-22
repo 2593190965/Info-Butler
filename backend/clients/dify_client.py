@@ -1,4 +1,5 @@
 import asyncio
+import json
 import logging
 
 from httpx import AsyncClient, HTTPStatusError
@@ -10,6 +11,19 @@ logger = logging.getLogger(__name__)
 
 MAX_RETRIES = 3
 RETRY_DELAY = 2
+
+
+def _try_parse_json(value):
+    if isinstance(value, (list, dict)):
+        return value
+    if isinstance(value, str) and value.strip():
+        trimmed = value.strip()
+        if trimmed.startswith("[") or trimmed.startswith("{"):
+            try:
+                return json.loads(trimmed)
+            except (json.JSONDecodeError, ValueError):
+                logger.warning(f"Failed to parse JSON string: {trimmed[:100]}")
+    return value
 
 
 class DifyClient:
@@ -69,11 +83,13 @@ class DifyClient:
             summary = " ".join(str(s) for s in summary)
 
         tags_raw = raw_output.get("tags", [])
+        tags_raw = _try_parse_json(tags_raw)
         if isinstance(tags_raw, str):
             tags_raw = [t.strip() for t in tags_raw.split(",") if t.strip()]
         tags = [str(t) for t in tags_raw if t]
 
         action_items_raw = raw_output.get("action_items", [])
+        action_items_raw = _try_parse_json(action_items_raw)
         action_items_processed = []
         for item in action_items_raw:
             if isinstance(item, dict):

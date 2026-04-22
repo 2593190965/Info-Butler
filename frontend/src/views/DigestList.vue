@@ -2,7 +2,7 @@
   <div class="digest-list">
     <h2>知识卡片</h2>
 
-    <n-space class="filter-bar" align="center">
+    <n-space class="filter-bar" align="center" :wrap="true">
       <n-input v-model:value="keyword" placeholder="搜索关键词" clearable style="width: 200px" />
       <n-select v-model:value="statusFilter" :options="statusOptions" placeholder="状态筛选" clearable
         style="width: 150px" />
@@ -11,11 +11,11 @@
 
     <n-spin :show="loading">
       <div v-if="items.length" class="card-list">
-        <n-card v-for="item in items" :key="item.id" hoverable class="info-card">
+        <n-card v-for="item in items" :key="item.id" hoverable class="info-card" @click="$router.push(`/digest/${item.task_id}`)">
           <template #header>
             <n-space justify="space-between" align="center">
               <span class="card-title">{{ item.title || '无标题' }}</span>
-              <n-tag :type="statusType(item.status)" size="small">{{ item.status }}</n-tag>
+              <n-tag :type="statusType(item.status)" size="small">{{ statusLabel(item.status) }}</n-tag>
             </n-space>
           </template>
 
@@ -24,8 +24,9 @@
           <template #footer>
             <n-space justify="space-between">
               <n-space>
-                <n-tag v-for="tag in (item.tags || [])" :key="typeof tag === 'string' ? tag : tag.name || tag.id"
-                  size="small" round type="info">
+                <n-tag v-for="tag in (item.tags || [])"
+                  :key="typeof tag === 'string' ? tag : tag.name || tag.id" size="small" round type="info"
+                  @click.stop="filterByTag(typeof tag === 'string' ? tag : tag.name || tag)">
                   {{ typeof tag === 'string' ? tag : tag.name || tag }}
                 </n-tag>
               </n-space>
@@ -48,7 +49,11 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import api from '@/api'
+
+const router = useRouter()
+const route = useRoute()
 
 const loading = ref(false)
 const items = ref<any[]>([])
@@ -65,22 +70,24 @@ const statusOptions = [
 ]
 
 function statusType(status: string): 'success' | 'warning' | 'error' | 'default' {
-  const map: Record<string, any> = {
-    done: 'success',
-    processing: 'warning',
-    failed: 'error',
-    parse_error: 'error',
-  }
+  const map: Record<string, any> = { done: 'success', processing: 'warning', failed: 'error', parse_error: 'error' }
   return map[status] || 'default'
+}
+
+function statusLabel(status: string): string {
+  const map: Record<string, string> = { done: '已完成', processing: '处理中', failed: '失败', parse_error: '解析错误' }
+  return map[status] || status
+}
+
+function filterByTag(tagName: string) {
+  keyword.value = tagName
+  fetchData()
 }
 
 async function fetchData() {
   loading.value = true
   try {
-    const params: any = {
-      page: page.value,
-      page_size: pageSize.value,
-    }
+    const params: any = { page: page.value, page_size: pageSize.value }
     if (keyword.value) params.keyword = keyword.value
     if (statusFilter.value) params.status = statusFilter.value
 

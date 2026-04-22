@@ -6,6 +6,7 @@ class Settings(BaseSettings):
     app_env: str = "development"
     debug: bool = True
     api_key: str = "dev-api-key-2026"
+    jwt_secret: str = "info-butler-jwt-secret-key-change-in-production-2026"
 
     mysql_host: str = "127.0.0.1"
     mysql_port: int = 3306

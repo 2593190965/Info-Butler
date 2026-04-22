@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.api.deps import get_current_user
+from backend.api.deps import get_current_user_id
 from backend.core.config import settings
 from backend.core.database import get_db
 from backend.schemas.digest import (
@@ -26,12 +26,13 @@ router = APIRouter()
 async def create_digest(
     body: DigestCreate,
     db: AsyncSession = Depends(get_db),
-    _user: str = Depends(get_current_user),
+    uid: int = Depends(get_current_user_id),
 ):
     raw_info = await create_raw_info(
         db=db,
         source_type=body.source_type,
         content=body.content,
+        user_id=uid,
         title=body.title,
     )
 
@@ -54,9 +55,9 @@ async def create_digest(
 async def get_digest(
     task_id: str,
     db: AsyncSession = Depends(get_db),
-    _user: str = Depends(get_current_user),
+    uid: int = Depends(get_current_user_id),
 ):
-    raw_info = await get_digest_by_task_id(db, task_id)
+    raw_info = await get_digest_by_task_id(db, task_id, uid)
     if not raw_info:
         raise HTTPException(status_code=404, detail="Task not found")
 
@@ -95,11 +96,12 @@ async def digest_list(
     keyword: str | None = None,
     tags: str | None = None,
     db: AsyncSession = Depends(get_db),
-    _user: str = Depends(get_current_user),
+    uid: int = Depends(get_current_user_id),
 ):
     tag_list = tags.split(",") if tags else None
     result = await list_digests(
         db=db,
+        user_id=uid,
         page=page,
         page_size=page_size,
         status=status,

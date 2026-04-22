@@ -15,11 +15,20 @@
 | **知识卡片库** | 分页浏览、关键词搜索、状态筛选 |
 | **行动项看板** | 三栏看板（待办 / 已完成 / 已忽略），支持状态切换 |
 | **周报复盘** | 本周统计概览（新增信息、行动项、完成率） |
+| **飞书通知** | 处理完成/失败时自动推送飞书群消息（摘要+行动项） |
+| **标签管理** | 独立管理页面，支持 CRUD + 搜索 + 关联统计 |
+| **信息详情** | 点击卡片查看完整内容，行动项状态可切换 |
+| **标签筛选** | 列表页点击标签快速按名称筛选信息 |
+| **JWT 认证** | 用户注册/登录，Bearer Token 鉴权，7天有效期 |
+| **数据隔离** | 所有数据（卡片/标签/行动项/周报）按用户完全独立 |
+| **批量导入** | 一次提交最多20条信息，支持文本和URL |
+| **队列监控** | 实时查看处理状态（待处理/完成/失败） |
 
 ### 技术特性
 
 - **异步处理**: ARQ 任务队列 + Redis，Dify 调用不阻塞请求
 - **URL 抓取**: readability-lxml 提取网页正文内容
+- **飞书机器人**: Webhook 实时通知，处理结果即时推送
 - **全局异常处理**: 统一错误响应格式
 - **API Key 鉴权**: 简单安全的接口保护
 - **深色主题**: Naive UI Catppuccin 风格前端
@@ -88,6 +97,9 @@ REDIS_DB=1
 DIFY_API_URL=https://api.dify.ai/v1
 DIFY_API_KEY=app-xxxxxxxxxxxxxxx
 DIFY_WORKFLOW_ID=your-workflow-id
+
+# 飞书机器人（可选）
+FEISHU_WEBHOOK_URL=https://open.feishu.cn/open-apis/bot/v2/hook/your-webhook-id
 ```
 
 ### 3. 前端 - 安装依赖
@@ -250,7 +262,8 @@ Info-Butler/
 │   │   └── review.py      #   复盘统计
 │   ├── clients/           # 外部服务客户端
 │   │   ├── dify_client.py #   Dify AI 调用（含重试）
-│   │   └── scraper_client.py  # URL 内容抓取
+│   │   ├── scraper_client.py  # URL 内容抓取
+│   │   └── feishu_client.py   # 飞书 Webhook 通知
 │   ├── core/              # 核心基础设施
 │   │   ├── config.py      #   配置加载（.env）
 │   │   ├── database.py    #   异步数据库引擎
@@ -304,8 +317,8 @@ cd frontend && npx vue-tsc --noEmit # 类型检查
 
 - [x] Phase 1: MVP 核心功能（14/14 完成）
 - [x] Phase 2: 异步任务 + 错误处理（9/9 完成）
-- [x] Phase 3: 完善 + 优化（5/6 完成）
-  - [ ] Dify Workflow 输出质量优化（用户任务）
+- [x] Phase 3: 完善 + 优化（8/8 完成）✅ 全部完成
+- [ ] Phase 4: 功能完善与优化（5/5 完成）✅ 全部完成
 
 详细进度见 [tasks.md](./tasks.md)
 

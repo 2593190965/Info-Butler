@@ -6,11 +6,12 @@ from backend.models.tag import Tag, action_tags_table, info_tags_table
 
 async def list_tags(
     db: AsyncSession,
+    user_id: int,
     keyword: str | None = None,
     page: int = 1,
     page_size: int = 50,
 ):
-    query = select(Tag)
+    query = select(Tag).where(Tag.user_id == user_id)
 
     if keyword:
         query = query.where(Tag.name.ilike(f"%{keyword}%"))
@@ -43,21 +44,21 @@ async def list_tags(
     return {"items": items, "total": total}
 
 
-async def get_tag_by_id(db: AsyncSession, tag_id: int) -> Tag | None:
-    result = await db.execute(select(Tag).where(Tag.id == tag_id))
+async def get_tag_by_id(db: AsyncSession, tag_id: int, user_id: int) -> Tag | None:
+    result = await db.execute(select(Tag).where(Tag.id == tag_id, Tag.user_id == user_id))
     return result.scalar_one_or_none()
 
 
-async def get_tag_by_name(db: AsyncSession, name: str) -> Tag | None:
-    result = await db.execute(select(Tag).where(Tag.name == name))
+async def get_tag_by_name(db: AsyncSession, name: str, user_id: int) -> Tag | None:
+    result = await db.execute(select(Tag).where(Tag.name == name, Tag.user_id == user_id))
     return result.scalar_one_or_none()
 
 
-async def create_tag(db: AsyncSession, name: str) -> Tag:
-    existing = await get_tag_by_name(db, name)
+async def create_tag(db: AsyncSession, name: str, user_id: int) -> Tag:
+    existing = await get_tag_by_name(db, name, user_id)
     if existing:
         return existing
-    tag = Tag(name=name)
+    tag = Tag(user_id=user_id, name=name)
     db.add(tag)
     await db.commit()
     await db.refresh(tag)
@@ -71,8 +72,8 @@ async def update_tag(db: AsyncSession, tag: Tag, name: str) -> Tag:
     return tag
 
 
-async def delete_tag(db: AsyncSession, tag_id: int) -> bool:
-    tag = await get_tag_by_id(db, tag_id)
+async def delete_tag(db: AsyncSession, tag_id: int, user_id: int) -> bool:
+    tag = await get_tag_by_id(db, tag_id, user_id)
     if not tag:
         return False
     await db.execute(info_tags_table.delete().where(info_tags_table.c.tag_id == tag_id))

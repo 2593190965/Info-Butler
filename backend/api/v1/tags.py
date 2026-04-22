@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.api.deps import get_current_user
+from backend.api.deps import get_current_user_id
 from backend.core.database import get_db
 from backend.schemas.tag import PaginatedTags, TagCreate, TagResponse, TagUpdate
 from backend.services.tag_service import (
@@ -21,9 +21,9 @@ async def tag_list(
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
-    _user: str = Depends(get_current_user),
+    uid: int = Depends(get_current_user_id),
 ):
-    result = await list_tags(db=db, keyword=keyword, page=page, page_size=page_size)
+    result = await list_tags(db=db, user_id=uid, keyword=keyword, page=page, page_size=page_size)
     return PaginatedTags(items=result["items"], total=result["total"])
 
 
@@ -31,9 +31,9 @@ async def tag_list(
 async def tag_create(
     body: TagCreate,
     db: AsyncSession = Depends(get_db),
-    _user: str = Depends(get_current_user),
+    uid: int = Depends(get_current_user_id),
 ):
-    tag = await create_tag(db=db, name=body.name)
+    tag = await create_tag(db=db, name=body.name, user_id=uid)
     return TagResponse(
         id=tag.id,
         name=tag.name,
@@ -47,9 +47,9 @@ async def tag_update(
     tag_id: int,
     body: TagUpdate,
     db: AsyncSession = Depends(get_db),
-    _user: str = Depends(get_current_user),
+    uid: int = Depends(get_current_user_id),
 ):
-    tag = await get_tag_by_id(db, tag_id)
+    tag = await get_tag_by_id(db, tag_id, uid)
     if not tag:
         raise HTTPException(status_code=404, detail="Tag not found")
     updated = await update_tag(db=db, tag=tag, name=body.name)
@@ -65,9 +65,9 @@ async def tag_update(
 async def tag_delete(
     tag_id: int,
     db: AsyncSession = Depends(get_db),
-    _user: str = Depends(get_current_user),
+    uid: int = Depends(get_current_user_id),
 ):
-    deleted = await delete_tag(db=db, tag_id=tag_id)
+    deleted = await delete_tag(db=db, tag_id=tag_id, user_id=uid)
     if not deleted:
         raise HTTPException(status_code=404, detail="Tag not found")
     return {"deleted": True}

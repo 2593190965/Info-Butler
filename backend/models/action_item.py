@@ -10,6 +10,7 @@ class ActionItem(Base):
     __tablename__ = "action_items"
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     info_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("raw_infos.id", ondelete="CASCADE"), nullable=False)
     content: Mapped[str] = mapped_column(String(500), nullable=False)
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="pending", server_default="pending")

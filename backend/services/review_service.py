@@ -9,6 +9,7 @@ from backend.models.raw_info import RawInfo
 
 async def get_weekly_review(
     db: AsyncSession,
+    user_id: int,
     week_start: str | None = None,
 ) -> dict:
     if week_start:
@@ -22,6 +23,7 @@ async def get_weekly_review(
     new_info_result = await db.execute(
         select(func.count())
         .select_from(RawInfo)
+        .where(RawInfo.user_id == user_id)
         .where(RawInfo.created_at >= start)
         .where(RawInfo.created_at <= end)
         .where(RawInfo.status == "done")
@@ -31,6 +33,7 @@ async def get_weekly_review(
     new_action_result = await db.execute(
         select(func.count())
         .select_from(ActionItem)
+        .where(ActionItem.user_id == user_id)
         .where(ActionItem.created_at >= start)
         .where(ActionItem.created_at <= end)
     )
@@ -39,6 +42,7 @@ async def get_weekly_review(
     done_action_result = await db.execute(
         select(func.count())
         .select_from(ActionItem)
+        .where(ActionItem.user_id == user_id)
         .where(ActionItem.updated_at >= start)
         .where(ActionItem.updated_at <= end)
         .where(ActionItem.status == "done")
@@ -48,6 +52,7 @@ async def get_weekly_review(
     ignored_action_result = await db.execute(
         select(func.count())
         .select_from(ActionItem)
+        .where(ActionItem.user_id == user_id)
         .where(ActionItem.updated_at >= start)
         .where(ActionItem.updated_at <= end)
         .where(ActionItem.status == "ignored")
@@ -58,6 +63,7 @@ async def get_weekly_review(
 
     pending_actions_query = (
         select(ActionItem)
+        .where(ActionItem.user_id == user_id)
         .where(ActionItem.status == "pending")
         .order_by(ActionItem.priority.desc(), ActionItem.created_at.asc())
         .limit(5)

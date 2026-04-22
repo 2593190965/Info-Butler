@@ -18,9 +18,11 @@ async def create_raw_info(
     db: AsyncSession,
     source_type: str,
     content: str,
+    user_id: int,
     title: str | None = None,
 ) -> RawInfo:
     raw_info = RawInfo(
+        user_id=user_id,
         source_type=source_type,
         raw_text=content,
         title=title,
@@ -34,6 +36,7 @@ async def create_raw_info(
 
 async def process_digest_sync(db: AsyncSession, raw_info: RawInfo) -> None:
     text = raw_info.raw_text
+    uid = raw_info.user_id
 
     if raw_info.source_type == "url" and raw_info.source_url:
         try:
@@ -65,10 +68,10 @@ async def process_digest_sync(db: AsyncSession, raw_info: RawInfo) -> None:
 
         tag_ids = []
         for tag_name in validated.tags:
-            existing = await db.execute(select(Tag).where(Tag.name == tag_name).limit(1))
+            existing = await db.execute(select(Tag).where(Tag.name == tag_name, Tag.user_id == uid).limit(1))
             tag_obj = existing.scalar_one_or_none()
             if not tag_obj:
-                tag_obj = Tag(name=tag_name)
+                tag_obj = Tag(user_id=uid, name=tag_name)
                 db.add(tag_obj)
                 await db.flush()
             tag_ids.append(tag_obj.id)
@@ -79,6 +82,7 @@ async def process_digest_sync(db: AsyncSession, raw_info: RawInfo) -> None:
 
         for action_data in validated.action_items:
             action_item = ActionItem(
+                user_id=uid,
                 info_id=raw_info.id,
                 content=action_data.content,
                 priority=action_data.priority,
@@ -129,24 +133,24 @@ async def process_digest_sync(db: AsyncSession, raw_info: RawInfo) -> None:
         )
 
 
-async def get_digest_by_task_id(db: AsyncSession, task_id: str) -> RawInfo | None:
-    result = await db.execute(
-        select(RawInfo)
-        .where(RawInfo.task_id == task_id)
-        .options(selectinload(RawInfo.tags), selectinload(RawInfo.action_items))
-    )
+async def get_digest_by_task_id(db: AsyncSession, task_id: str, user_id: int | None = None) -> RawInfo | None:
+    query = select(RawInfo).where(RawInfo.task_id == task_id)
+    if user_id is not None:
+        query = query.where(RawInfo.user_id == user_id)
+    result = await db.execute(query.options(selectinload(RawInfo.tags), selectinload(RawInfo.action_items)))
     return result.scalar_one_or_none()
 
 
 async def list_digests(
     db: AsyncSession,
+    user_id: int,
     page: int = 1,
     page_size: int = 20,
     status: str | None = None,
     keyword: str | None = None,
     tags: list[str] | None = None,
 ):
-    query = select(RawInfo)
+    query = select(RawInfo).where(RawInfo.user_id == user_id)
 
     if status:
         query = query.where(RawInfo.status == status)
@@ -154,6 +158,16 @@ async def list_digests(
     if keyword:
         like_pattern = f"%{keyword}%"
         query = query.where((RawInfo.summary.ilike(like_pattern)) | (RawInfo.raw_text.ilike(like_pattern)))
+
+    if tags:
+        tag_names = [t for t in tags if t]
+        if tag_names:
+            subq = (
+                select(info_tags_table.c.info_id)
+                .join(Tag, info_tags_table.c.tag_id == Tag.id)
+                .where(Tag.name.in_(tag_names), Tag.user_id == user_id)
+            )
+            query = query.where(RawInfo.id.in_(subq))
 
     count_query = select(func.count()).select_from(query.subquery())
     total = (await db.execute(count_query)).scalar() or 0

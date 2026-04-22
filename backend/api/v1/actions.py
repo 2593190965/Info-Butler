@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.api.deps import get_current_user
+from backend.api.deps import get_current_user_id
 from backend.core.database import get_db
 from backend.schemas.action_item import (
     ActionItemResponse,
@@ -26,10 +26,11 @@ async def action_list(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
-    _user: str = Depends(get_current_user),
+    uid: int = Depends(get_current_user_id),
 ):
     result = await list_actions(
         db=db,
+        user_id=uid,
         page=page,
         page_size=page_size,
         status=status,
@@ -66,9 +67,9 @@ async def action_list(
 async def batch_update(
     body: BatchActionUpdate,
     db: AsyncSession = Depends(get_db),
-    _user: str = Depends(get_current_user),
+    uid: int = Depends(get_current_user_id),
 ):
-    count = await batch_update_actions(db=db, ids=body.ids, status=body.status)
+    count = await batch_update_actions(db=db, user_id=uid, ids=body.ids, status=body.status)
     return {"updated_count": count}
 
 
@@ -77,9 +78,9 @@ async def update_action_item(
     action_id: int,
     body: ActionItemUpdate,
     db: AsyncSession = Depends(get_db),
-    _user: str = Depends(get_current_user),
+    uid: int = Depends(get_current_user_id),
 ):
-    action_item = await get_action_by_id(db, action_id)
+    action_item = await get_action_by_id(db, action_id, uid)
     if not action_item:
         raise HTTPException(status_code=404, detail="Action item not found")
 

@@ -7,12 +7,13 @@ from backend.models.action_item import ActionItem
 
 async def list_actions(
     db: AsyncSession,
+    user_id: int,
     page: int = 1,
     page_size: int = 20,
     status: str | None = None,
     priority: str | None = None,
 ):
-    query = select(ActionItem)
+    query = select(ActionItem).where(ActionItem.user_id == user_id)
 
     if status:
         query = query.where(ActionItem.status == status)
@@ -35,10 +36,10 @@ async def list_actions(
     return {"items": items, "total": total, "page": page, "page_size": page_size}
 
 
-async def get_action_by_id(db: AsyncSession, action_id: int) -> ActionItem | None:
+async def get_action_by_id(db: AsyncSession, action_id: int, user_id: int) -> ActionItem | None:
     result = await db.execute(
         select(ActionItem)
-        .where(ActionItem.id == action_id)
+        .where(ActionItem.id == action_id, ActionItem.user_id == user_id)
         .options(selectinload(ActionItem.tags), selectinload(ActionItem.info))
     )
     return result.scalar_one_or_none()
@@ -67,10 +68,15 @@ async def update_action(
 
 async def batch_update_actions(
     db: AsyncSession,
+    user_id: int,
     ids: list[int],
     status: str,
 ) -> int:
-    stmt = update(ActionItem).where(ActionItem.id.in_(ids)).values(status=status)
+    stmt = (
+        update(ActionItem)
+        .where(ActionItem.id.in_(ids), ActionItem.user_id == user_id)
+        .values(status=status)
+    )
     result = await db.execute(stmt)
     await db.commit()
     return result.rowcount
