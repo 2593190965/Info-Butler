@@ -521,23 +521,32 @@ Info-Butler/
   - [DigestList.vue](frontend/src/views/DigestList.vue) — 标签点击筛选 + 状态下拉自动查询 + 高亮选中标签
   - [digest_service.py](backend/services/digest_service.py) — tags 子查询过滤
 
-### 4.8 URL 内容抓取增强（httpx + BeautifulSoup4）
-- [x] **已完成** 2026-04-22
+### 4.8 URL 内容抓取增强（多策略降级）
+- [x] **已完成** 2026-04-22（v2 多策略升级）
 - **目标：** 粘贴 URL 后自动采集页面正文内容，再交给 AI 解析
-- **技术方案：** httpx（HTTP 客户端）+ BeautifulSoup4（HTML 解析），线程池异步执行避免阻塞
+- **技术方案：** 多级降级抓取器（httpx → Jina Reader → 友好错误提示）
 - **实现细节：**
-  - `backend/clients/scraper_client.py`：完全重写，移除 Playwright 依赖（Windows asyncio 兼容性问题）
-  - 模拟浏览器请求头（User-Agent / Sec-Ch-Ua / Accept 等）绕过基础反爬
-  - BeautifulSoup 清理：移除 script/style/nav/header/footer/aside 等噪音标签
-  - 智能标题提取：优先 `<title>` 标签 → 降级 `og:title` meta
-  - 正文提取：优先 `<main>` / `<article>` → 降级 `<body>`
-  - 文本清洗：去除 HTML 标签、合并空白、过滤短行
-  - HTTP 错误容错：4xx 但返回了 HTML 正文时仍尝试解析
+  - `backend/clients/scraper_client.py`：多策略降级架构
+  - **Level 1 — httpx + BeautifulSoup4**：主力抓取，覆盖 95%+ 常规静态站点
+    - 模拟浏览器请求头绕过基础反爬
+    - BeautifulSoup 清理噪音标签（script/style/nav/footer 等）
+    - 智能标题提取 / 正文提取 / 文本清洗
+  - **Level 2 — Jina Reader API**：降级方案，处理 JS 渲染页面和部分反爬站
+    - 返回干净 Markdown 格式文本
+    - 免费额度支持日常使用
+  - **反爬检测**：自动识别挑战页（验证码/登录墙/安全检查）
+    - 关键词匹配：欢迎来到、验证、安全检查、请登录等
+    - 内容长度阈值：<200 字符判定为无效页
+  - **友好错误提示**：所有策略失败后给出中文操作建议（手动粘贴内容）
 - **集成点：**
-  - `backend/services/digest_service.py`：`process_digest_sync()` 中 URL 类型自动调用 `scraper_client.fetch_url()`
-  - `POST /api/v1/digest` 提交 `source_type=url` 时触发完整流程：URL 抓取 → 内容清洗 → Dify AI 解析 → 入库
-- **测试验证：** ✅ 端到端测试通过（httpbin.org/html → 抓取 3594 字符 → AI 生成摘要+标签+行动项）
-- **已知限制：** Wikipedia 等强反爬站点返回 403（TLS 指纹检测），覆盖 95%+ 常规网站
+  - `backend/services/digest_service.py`：URL 类型自动调用 `scraper_client.fetch_url()`
+  - 抓取失败时标记 `status=failed` + 中文错误信息，前端可展示给用户
+- **测试验证：**
+  - ✅ httpbin.org/html → Level 1 成功，3594 字符
+  - ✅ 知乎专栏 → 正确检测为反爬 → Level 2 尝试 → 友好错误提示
+- **已知限制：**
+  - 知乎/Wikipedia 等强反爬站点需用户手动粘贴内容
+  - 可选配置 Jina Reader API Key 提升降级成功率
 
 ---
 
