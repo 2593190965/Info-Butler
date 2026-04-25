@@ -36,7 +36,12 @@ async def create_raw_info(
     return raw_info
 
 
-async def process_digest_sync(db: AsyncSession, raw_info: RawInfo) -> None:
+async def process_digest_sync(
+    db: AsyncSession,
+    raw_info: RawInfo,
+    generate_actions: bool = True,
+    generate_tags: bool = True,
+) -> None:
     text = raw_info.raw_text
     uid = raw_info.user_id
 
@@ -72,33 +77,37 @@ async def process_digest_sync(db: AsyncSession, raw_info: RawInfo) -> None:
         raw_info.status = "done"
 
         tag_ids = []
-        for tag_name in validated.tags:
-            stmt = mysql_insert(Tag).values(user_id=uid, name=tag_name)
-            stmt = stmt.on_duplicate_key_update(id=stmt.inserted.id)
-            result = await db.execute(stmt)
-            tag_id = result.inserted_primary_key[0]
-            if tag_id is None:
-                existing = await db.execute(select(Tag.id).where(Tag.name == tag_name, Tag.user_id == uid).limit(1))
-                tag_id = existing.scalar_one()
-            tag_ids.append(tag_id)
+        if generate_tags and validated.tags:
+            for tag_name in validated.tags:
+                stmt = mysql_insert(Tag).values(user_id=uid, name=tag_name)
+                stmt = stmt.on_duplicate_key_update(id=stmt.inserted.id)
+                result = await db.execute(stmt)
+                tag_id = result.inserted_primary_key[0]
+                if tag_id is None:
+                    existing = await db.execute(
+                        select(Tag.id).where(Tag.name == tag_name, Tag.user_id == uid).limit(1)
+                    )
+                    tag_id = existing.scalar_one()
+                tag_ids.append(tag_id)
 
-        await db.execute(info_tags_table.delete().where(info_tags_table.c.info_id == raw_info.id))
-        for tid in tag_ids:
-            await db.execute(info_tags_table.insert().values(info_id=raw_info.id, tag_id=tid))
-
-        for action_data in validated.action_items:
-            action_item = ActionItem(
-                user_id=uid,
-                info_id=raw_info.id,
-                content=action_data.content,
-                priority=action_data.priority,
-                status="pending",
-            )
-            db.add(action_item)
-            await db.flush()
-
+            await db.execute(info_tags_table.delete().where(info_tags_table.c.info_id == raw_info.id))
             for tid in tag_ids:
-                await db.execute(action_tags_table.insert().values(action_id=action_item.id, tag_id=tid))
+                await db.execute(info_tags_table.insert().values(info_id=raw_info.id, tag_id=tid))
+
+        if generate_actions and validated.action_items:
+            for action_data in validated.action_items:
+                action_item = ActionItem(
+                    user_id=uid,
+                    info_id=raw_info.id,
+                    content=action_data.content,
+                    priority=action_data.priority,
+                    status="pending",
+                )
+                db.add(action_item)
+                await db.flush()
+
+                for tid in tag_ids:
+                    await db.execute(action_tags_table.insert().values(action_id=action_item.id, tag_id=tid))
 
         await db.commit()
 

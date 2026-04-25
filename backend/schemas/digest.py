@@ -5,6 +5,8 @@ class DigestCreate(BaseModel):
     source_type: str = Field(default="text", pattern="^(text|url|voice)$")
     content: str = Field(..., min_length=1, max_length=50000)
     title: str | None = Field(None, max_length=500)
+    generate_actions: bool = Field(default=True, description="是否生成行动项")
+    generate_tags: bool = Field(default=True, description="是否生成标签")
 
 
 class DigestResponse(BaseModel):

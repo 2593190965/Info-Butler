@@ -17,6 +17,16 @@
       <n-form-item label="标题（可选）" path="title">
         <n-input v-model:value="form.title" placeholder="可选，不填则自动生成" />
       </n-form-item>
+      <n-form-item label="生成选项">
+        <n-space>
+          <n-checkbox v-model:checked="form.generateActions">
+            生成行动项
+          </n-checkbox>
+          <n-checkbox v-model:checked="form.generateTags">
+            生成标签
+          </n-checkbox>
+        </n-space>
+      </n-form-item>
       <n-form-item>
         <n-space>
           <n-button type="primary" @click="handleSubmit" :loading="loading" :disabled="loading">
@@ -101,6 +111,8 @@ const form = reactive({
   sourceType: 'text',
   content: '',
   title: '',
+  generateActions: true,
+  generateTags: true,
 })
 
 const rules = {
@@ -148,6 +160,8 @@ async function handleSubmit() {
       source_type: form.sourceType,
       content,
       title: form.title?.trim() || null,
+      generate_actions: form.generateActions,
+      generate_tags: form.generateTags,
     })
 
     const taskId = res.task_id
@@ -203,6 +217,8 @@ function handleReset() {
   if (loading.value) return
   form.content = ''
   form.title = ''
+  form.generateActions = true
+  form.generateTags = true
   result.value = null
   polling.value = false
 }

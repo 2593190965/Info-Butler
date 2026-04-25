@@ -180,3 +180,45 @@
 - `backend/core/security.py` - JWT 解码失败时添加日志
 - `backend/models/action_item.py`, `backend/models/tag.py` - 修复行长度 lint 错误
 - `backend/clients/dify_client.py` - 修复模糊变量名 lint 错误
+
+---
+
+## 功能优化
+
+### 可选生成行动项和标签
+
+> 新增功能：用户可选择是否生成行动项和标签
+
+**背景**：每次提交文本都生成多个行动项和标签，导致数据冗余、待办列表爆炸、标签空间混乱。
+
+**实现**：
+
+1. **前端选项**：
+   - 新增两个复选框："生成行动项"、"生成标签"
+   - 默认都勾选，用户可自行取消
+   - 位置：`frontend/src/views/DigestNew.vue`
+
+2. **后端传递**：
+   - Schema 添加 `generate_actions: bool` 和 `generate_tags: bool` 字段
+   - API 接收参数并传递给 Service 层
+   - ARQ Worker 也支持传递这些参数
+
+3. **写入控制**：
+   - `process_digest_sync` 根据参数决定是否写入数据库
+   - 不生成标签 → 不创建 Tag 记录、不创建 info_tags 关联
+   - 不生成行动项 → 不创建 ActionItem 记录、不创建 action_tags 关联
+
+4. **数量限制**：
+   - 行动项最多 3 个（原来 10 个）
+   - 标签最多 5 个（保持不变）
+
+**修改文件**：
+- `backend/schemas/digest.py` - 添加选项字段
+- `backend/schemas/batch.py` - 批量导入支持选项
+- `backend/services/digest_service.py` - 根据选项控制写入
+- `backend/api/v1/digest.py` - 传递参数
+- `backend/api/v1/tasks.py` - 批量导入传递参数
+- `backend/workers/arq_client.py` - ARQ 任务支持参数
+- `backend/workers/tasks.py` - Worker 处理参数
+- `backend/clients/dify_client.py` - 限制行动项数量
+- `frontend/src/views/DigestNew.vue` - 添加选项 UI

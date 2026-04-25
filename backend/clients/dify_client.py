@@ -131,7 +131,7 @@ class DifyClient:
 
             return DifyResponse(
                 summary=summary,
-                action_items=action_items_data[:10],
+                action_items=action_items_data[:3],
                 tags=tags[:5],
             )
         except Exception as e:

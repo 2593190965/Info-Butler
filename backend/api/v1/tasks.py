@@ -46,9 +46,16 @@ async def batch_import(
                 raw_info.error_msg = "URL 必须以 http:// 或 https:// 开头"
             await db.commit()
 
+        gen_actions = item.generate_actions if item.generate_actions is not None else body.generate_actions
+        gen_tags = item.generate_tags if item.generate_tags is not None else body.generate_tags
+
         if settings.app_env == "production":
             try:
-                _job_id = await enqueue_digest(raw_info.task_id)
+                await enqueue_digest(
+                    raw_info.task_id,
+                    generate_actions=gen_actions,
+                    generate_tags=gen_tags,
+                )
             except Exception as e:
                 logger.error(f"Failed to enqueue task {raw_info.task_id}: {e}")
                 raw_info.status = "failed"
@@ -57,7 +64,9 @@ async def batch_import(
                 errors.append({"index": i, "task_id": raw_info.task_id, "error": str(e)})
         else:
             try:
-                await process_digest_sync(db, raw_info)
+                await process_digest_sync(
+                    db, raw_info, generate_actions=gen_actions, generate_tags=gen_tags
+                )
             except Exception as e:
                 logger.error(f"Failed to process task {raw_info.task_id}: {e}")
                 errors.append({"index": i, "task_id": raw_info.task_id, "error": str(e)})

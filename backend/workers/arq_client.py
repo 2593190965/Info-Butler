@@ -31,8 +31,17 @@ async def close_arq_pool():
         _arq_pool = None
 
 
-async def enqueue_digest(task_id: str) -> str:
+async def enqueue_digest(
+    task_id: str,
+    generate_actions: bool = True,
+    generate_tags: bool = True,
+) -> str:
     pool = await get_arq_pool()
-    job = await pool.enqueue_job("process_digest", task_id)
+    job = await pool.enqueue_job(
+        "process_digest",
+        task_id,
+        generate_actions,
+        generate_tags,
+    )
     logger.info(f"Enqueued digest task: {task_id}, job_id: {job.job_id}")
     return job.job_id

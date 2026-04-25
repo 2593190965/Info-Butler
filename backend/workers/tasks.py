@@ -5,12 +5,12 @@ from sqlalchemy import update
 logger = logging.getLogger(__name__)
 
 
-async def process_digest(ctx, task_id: str):
+async def process_digest(ctx, task_id: str, generate_actions: bool = True, generate_tags: bool = True):
     from backend.core.database import async_session
     from backend.models.raw_info import RawInfo
     from backend.services.digest_service import get_digest_by_task_id, process_digest_sync
 
-    logger.info(f"Processing digest task: {task_id}")
+    logger.info(f"Processing digest task: {task_id}, actions={generate_actions}, tags={generate_tags}")
 
     async with async_session() as db:
         raw_info = await get_digest_by_task_id(db, task_id)
@@ -23,7 +23,9 @@ async def process_digest(ctx, task_id: str):
             return {"status": "skipped", "reason": "already_done"}
 
         try:
-            await process_digest_sync(db, raw_info)
+            await process_digest_sync(
+                db, raw_info, generate_actions=generate_actions, generate_tags=generate_tags
+            )
             logger.info(f"Task {task_id} processed successfully")
             return {"status": "done", "info_id": raw_info.id}
         except Exception as e:

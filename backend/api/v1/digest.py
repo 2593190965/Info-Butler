@@ -48,10 +48,16 @@ async def create_digest(
         await db.commit()
 
     if settings.app_env == "production":
-        await enqueue_digest(raw_info.task_id)
+        await enqueue_digest(
+            raw_info.task_id,
+            generate_actions=body.generate_actions,
+            generate_tags=body.generate_tags,
+        )
     else:
         try:
-            await process_digest_sync(db, raw_info)
+            await process_digest_sync(
+                db, raw_info, generate_actions=body.generate_actions, generate_tags=body.generate_tags
+            )
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Processing failed: {e}")
 
