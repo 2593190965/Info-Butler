@@ -1,7 +1,9 @@
 import asyncio
 import concurrent.futures
+import ipaddress
 import logging
 import re
+from urllib.parse import urlparse
 
 import httpx
 from bs4 import BeautifulSoup, Comment
@@ -50,6 +52,48 @@ _CHALLENGE_KEYWORDS = {"欢迎来到", "验证", "安全检查", "请登录", "�
 
 _MIN_CONTENT_LENGTH = 200
 
+_BLOCKED_NETWORKS = [
+    ipaddress.ip_network("10.0.0.0/8"),
+    ipaddress.ip_network("172.16.0.0/12"),
+    ipaddress.ip_network("192.168.0.0/16"),
+    ipaddress.ip_network("127.0.0.0/8"),
+    ipaddress.ip_network("169.254.0.0/16"),
+    ipaddress.ip_network("0.0.0.0/8"),
+    ipaddress.ip_network("100.64.0.0/10"),
+    ipaddress.ip_network("198.18.0.0/15"),
+    ipaddress.ip_network("::1/128"),
+    ipaddress.ip_network("fc00::/7"),
+    ipaddress.ip_network("fe80::/10"),
+]
+
+
+def _is_private_ip(hostname: str) -> bool:
+    import socket
+
+    try:
+        resolved = socket.getaddrinfo(hostname, None, socket.AF_UNSPEC, socket.SOCK_STREAM)
+        for family, _type, _proto, _canon, sockaddr in resolved:
+            ip_str = sockaddr[0]
+            ip = ipaddress.ip_address(ip_str)
+            for network in _BLOCKED_NETWORKS:
+                if ip in network:
+                    return True
+    except socket.gaierror:
+        return False
+    return False
+
+
+def _validate_url(url: str) -> str:
+    parsed = urlparse(url)
+    if parsed.scheme not in ("http", "https"):
+        raise ValueError(f"不支持的 URL 协议: {parsed.scheme}，仅允许 http/https")
+    hostname = parsed.hostname
+    if not hostname:
+        raise ValueError("URL 缺少主机名")
+    if _is_private_ip(hostname):
+        raise ValueError(f"不允许访问内网地址: {hostname}")
+    return url
+
 
 def _is_challenge_page(text: str) -> bool:
     if len(text) < _MIN_CONTENT_LENGTH:
@@ -87,7 +131,7 @@ def _extract_text(html: str) -> dict[str, str]:
     text = main.get_text(separator="\n") if main else soup.get_text(separator="\n")
 
     lines = [MULTI_SPACE.sub(" ", line).strip() for line in text.split("\n")]
-    lines = [l for l in lines if l and len(l) > 1]
+    lines = [ln for ln in lines if ln and len(ln) > 1]
     clean_text = "\n".join(lines)
 
     return {"title": title, "text": clean_text}
@@ -134,12 +178,18 @@ class ScraperClient:
                 body_lines.append(line)
 
         if not body_lines:
-            body_lines = [l for l in text.split("\n") if l.strip() and not l.startswith(("Title:", "URL:", "Source:"))]
+            body_lines = [
+                ln
+                for ln in text.split("\n")
+                if ln.strip() and not ln.startswith(("Title:", "URL:", "Source:"))
+            ]
 
-        clean = "\n".join(l.strip() for l in body_lines if len(l.strip()) > 1)
+        clean = "\n".join(ln.strip() for ln in body_lines if len(ln.strip()) > 1)
         return {"title": title, "text": clean}
 
     def _sync_fetch(self, url: str) -> dict[str, str]:
+        _validate_url(url)
+
         last_err = None
 
         try:
@@ -169,13 +219,13 @@ class ScraperClient:
         )
 
     async def fetch_url(self, url: str) -> dict[str, str]:
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         result = await loop.run_in_executor(_executor, self._sync_fetch, url)
         logger.info(f"URL fetched: {url[:60]}... title={result['title'][:40]} len={len(result['text'])}")
         return result
 
     async def close(self):
-        pass
+        _executor.shutdown(wait=False)
 
 
 scraper_client = ScraperClient()

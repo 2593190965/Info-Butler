@@ -112,6 +112,7 @@ async function fetchData() {
     items.value = res.items || []
   } catch (e: any) {
     console.error('Failed to load actions:', e)
+    message.error('加载行动项失败，请稍后重试')
   } finally {
     loading.value = false
   }

@@ -75,6 +75,7 @@ async function fetchData() {
     data.value = res
   } catch (e: any) {
     console.error('Failed to load review data:', e)
+    message.error('加载周报数据失败，请稍后重试')
   } finally {
     loading.value = false
   }

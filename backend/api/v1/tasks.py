@@ -1,3 +1,6 @@
+import logging
+import re
+
 from fastapi import APIRouter, Depends
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -10,7 +13,10 @@ from backend.schemas.batch import BatchImportRequest, BatchImportResponse, TaskS
 from backend.services.digest_service import create_raw_info, process_digest_sync
 from backend.workers.arq_client import enqueue_digest
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
+
+_SAFE_URL_PATTERN = re.compile(r"^https?://", re.IGNORECASE)
 
 
 @router.post("/batch", response_model=BatchImportResponse, status_code=202)
@@ -20,8 +26,9 @@ async def batch_import(
     uid: int = Depends(get_current_user_id),
 ):
     task_ids = []
+    errors = []
 
-    for item in body.items:
+    for i, item in enumerate(body.items):
         raw_info = await create_raw_info(
             db=db,
             source_type=item.source_type,
@@ -30,23 +37,41 @@ async def batch_import(
             title=item.title,
         )
         if raw_info.source_type == "url" and not raw_info.source_url:
-            raw_info.source_url = item.content
+            url = item.content.strip()
+            if _SAFE_URL_PATTERN.match(url):
+                raw_info.source_url = url
+            else:
+                raw_info.source_url = None
+                raw_info.status = "failed"
+                raw_info.error_msg = "URL 必须以 http:// 或 https:// 开头"
             await db.commit()
 
         if settings.app_env == "production":
-            _job_id = await enqueue_digest(raw_info.task_id)
+            try:
+                _job_id = await enqueue_digest(raw_info.task_id)
+            except Exception as e:
+                logger.error(f"Failed to enqueue task {raw_info.task_id}: {e}")
+                raw_info.status = "failed"
+                raw_info.error_msg = f"Enqueue failed: {e}"
+                await db.commit()
+                errors.append({"index": i, "task_id": raw_info.task_id, "error": str(e)})
         else:
             try:
                 await process_digest_sync(db, raw_info)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.error(f"Failed to process task {raw_info.task_id}: {e}")
+                errors.append({"index": i, "task_id": raw_info.task_id, "error": str(e)})
 
         task_ids.append(raw_info.task_id)
+
+    message = f"Submitted {len(task_ids)} items for processing"
+    if errors:
+        message += f", {len(errors)} failed"
 
     return BatchImportResponse(
         accepted=len(task_ids),
         task_ids=task_ids,
-        message=f"Successfully submitted {len(task_ids)} items for processing",
+        message=message,
     )
 
 

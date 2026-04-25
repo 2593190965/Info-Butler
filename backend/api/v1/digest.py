@@ -1,3 +1,5 @@
+import re
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -21,6 +23,8 @@ from backend.workers.arq_client import enqueue_digest
 
 router = APIRouter()
 
+_SAFE_URL_PATTERN = re.compile(r"^https?://", re.IGNORECASE)
+
 
 @router.post("", status_code=202, response_model=DigestAccepted)
 async def create_digest(
@@ -37,11 +41,14 @@ async def create_digest(
     )
 
     if raw_info.source_type == "url" and not raw_info.source_url:
-        raw_info.source_url = body.content
+        url = body.content.strip()
+        if not _SAFE_URL_PATTERN.match(url):
+            raise HTTPException(status_code=400, detail="URL 必须以 http:// 或 https:// 开头")
+        raw_info.source_url = url
         await db.commit()
 
     if settings.app_env == "production":
-        job_id = await enqueue_digest(raw_info.task_id)
+        await enqueue_digest(raw_info.task_id)
     else:
         try:
             await process_digest_sync(db, raw_info)

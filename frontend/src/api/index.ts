@@ -1,7 +1,7 @@
 import axios from 'axios'
 
 const api = axios.create({
-  baseURL: '/api/v1',
+  baseURL: import.meta.env.VITE_API_BASE_URL || '/api/v1',
   timeout: 60000,
 })
 
@@ -15,7 +15,10 @@ api.interceptors.request.use((config) => {
   if (t) {
     config.headers['Authorization'] = `Bearer ${t}`
   } else {
-    config.headers['X-API-Key'] = import.meta.env.VITE_API_KEY || 'dev-api-key-2026'
+    const apiKey = import.meta.env.VITE_API_KEY
+    if (apiKey) {
+      config.headers['X-API-Key'] = apiKey
+    }
   }
   return config
 })

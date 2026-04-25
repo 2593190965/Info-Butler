@@ -2,6 +2,7 @@ import asyncio
 import json
 import logging
 
+import httpx
 from httpx import AsyncClient, HTTPStatusError
 
 from backend.core.config import settings
@@ -11,6 +12,8 @@ logger = logging.getLogger(__name__)
 
 MAX_RETRIES = 3
 RETRY_DELAY = 2
+
+_TRANSIENT_EXCEPTIONS = (httpx.ConnectError, httpx.TimeoutException, httpx.RemoteProtocolError)
 
 
 def _try_parse_json(value):
@@ -42,11 +45,19 @@ class DifyClient:
             try:
                 result = await self._call_dify(text, source_type)
                 return result
-            except (HTTPStatusError, Exception) as e:
+            except _TRANSIENT_EXCEPTIONS as e:
                 last_error = e
-                logger.warning(f"Dify API call attempt {attempt + 1}/{MAX_RETRIES} failed: {e}")
+                logger.warning(f"Dify API call attempt {attempt + 1}/{MAX_RETRIES} failed (transient): {e}")
                 if attempt < MAX_RETRIES - 1:
                     await asyncio.sleep(RETRY_DELAY * (attempt + 1))
+            except HTTPStatusError as e:
+                if e.response.status_code >= 500:
+                    last_error = e
+                    logger.warning(f"Dify API call attempt {attempt + 1}/{MAX_RETRIES} failed (server error): {e}")
+                    if attempt < MAX_RETRIES - 1:
+                        await asyncio.sleep(RETRY_DELAY * (attempt + 1))
+                else:
+                    raise
 
         raise RuntimeError(f"Dify API failed after {MAX_RETRIES} retries: {last_error}")
 
@@ -116,22 +127,15 @@ class DifyClient:
                     action_items_data.append(ActionItemOutput(content=str(item), priority="medium"))
 
             tags = data.get("tags", [])
-            if len(tags) < 3:
-                logger.warning(f"Only {len(tags)} tags received, padding with defaults")
-                while len(tags) < 3:
-                    tags.append(f"tag-{len(tags) + 1}")
-
-            if len(action_items_data) == 0:
-                logger.warning("No action items extracted from response")
-                action_items_data.append(ActionItemOutput(content="Review the original content", priority="medium"))
+            summary = data.get("summary", "") or ""
 
             return DifyResponse(
-                summary=data.get("summary", "") or "No summary available",
+                summary=summary,
                 action_items=action_items_data[:10],
                 tags=tags[:5],
             )
         except Exception as e:
-            logger.warning(f"Dify response validation failed: {e}, using fallback")
+            logger.warning(f"Dify response validation failed: {e}")
             return None
 
     async def close(self):

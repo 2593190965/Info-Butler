@@ -132,6 +132,7 @@ async function fetchData() {
     total.value = res.total || 0
   } catch (e: any) {
     console.error('Failed to load tags:', e)
+    message.error('加载标签失败，请稍后重试')
   } finally {
     loading.value = false
   }

@@ -1,6 +1,8 @@
 import logging
+from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
+from sqlalchemy.dialects.mysql import insert as mysql_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -71,13 +73,14 @@ async def process_digest_sync(db: AsyncSession, raw_info: RawInfo) -> None:
 
         tag_ids = []
         for tag_name in validated.tags:
-            existing = await db.execute(select(Tag).where(Tag.name == tag_name, Tag.user_id == uid).limit(1))
-            tag_obj = existing.scalar_one_or_none()
-            if not tag_obj:
-                tag_obj = Tag(user_id=uid, name=tag_name)
-                db.add(tag_obj)
-                await db.flush()
-            tag_ids.append(tag_obj.id)
+            stmt = mysql_insert(Tag).values(user_id=uid, name=tag_name)
+            stmt = stmt.on_duplicate_key_update(id=stmt.inserted.id)
+            result = await db.execute(stmt)
+            tag_id = result.inserted_primary_key[0]
+            if tag_id is None:
+                existing = await db.execute(select(Tag.id).where(Tag.name == tag_name, Tag.user_id == uid).limit(1))
+                tag_id = existing.scalar_one()
+            tag_ids.append(tag_id)
 
         await db.execute(info_tags_table.delete().where(info_tags_table.c.info_id == raw_info.id))
         for tid in tag_ids:
@@ -111,6 +114,8 @@ async def process_digest_sync(db: AsyncSession, raw_info: RawInfo) -> None:
         )
 
     except ValueError as e:
+        await db.rollback()
+        await db.refresh(raw_info)
         raw_info.status = "failed"
         raw_info.error_msg = str(e)
         await db.commit()
@@ -123,6 +128,8 @@ async def process_digest_sync(db: AsyncSession, raw_info: RawInfo) -> None:
             status="failed",
         )
     except Exception as e:
+        await db.rollback()
+        await db.refresh(raw_info)
         raw_info.status = "failed"
         raw_info.error_msg = f"Unexpected error: {e}"
         await db.commit()
@@ -159,8 +166,12 @@ async def list_digests(
         query = query.where(RawInfo.status == status)
 
     if keyword:
-        like_pattern = f"%{keyword}%"
-        query = query.where((RawInfo.summary.ilike(like_pattern)) | (RawInfo.raw_text.ilike(like_pattern)))
+        escaped = keyword.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        like_pattern = f"%{escaped}%"
+        query = query.where(
+            (RawInfo.summary.ilike(like_pattern, escape="\\"))
+            | (RawInfo.raw_text.ilike(like_pattern, escape="\\"))
+        )
 
     if tags:
         tag_names = [t for t in tags if t]
@@ -186,3 +197,20 @@ async def list_digests(
     items = result.scalars().all()
 
     return {"items": items, "total": total, "page": page, "page_size": page_size}
+
+
+STUCK_PROCESSING_TIMEOUT_MINUTES = 30
+
+
+async def cleanup_stuck_processing(db: AsyncSession) -> int:
+    cutoff = datetime.now(UTC) - timedelta(minutes=STUCK_PROCESSING_TIMEOUT_MINUTES)
+    result = await db.execute(
+        update(RawInfo)
+        .where(RawInfo.status == "processing", RawInfo.created_at < cutoff)
+        .values(status="failed", error_msg="Processing timed out")
+    )
+    await db.commit()
+    count = result.rowcount
+    if count > 0:
+        logger.warning(f"Cleaned up {count} stuck-in-processing records")
+    return count

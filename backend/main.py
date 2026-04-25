@@ -26,7 +26,10 @@ async def lifespan(app: FastAPI):
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
-    await get_arq_pool()
+    try:
+        await get_arq_pool()
+    except Exception as e:
+        logger.warning(f"Failed to connect to Redis/ARQ pool: {e}. Background tasks will not be available.")
 
     yield
 
@@ -63,4 +66,14 @@ async def global_exception_handler(request: Request, exc: Exception):
 
 @app.get("/health")
 async def health_check():
-    return {"status": "ok", "app": settings.app_name}
+    from backend.core.database import async_session
+    from backend.services.digest_service import cleanup_stuck_processing
+
+    try:
+        async with async_session() as db:
+            cleaned = await cleanup_stuck_processing(db)
+    except Exception as e:
+        logger.warning(f"Health check cleanup failed: {e}")
+        cleaned = 0
+
+    return {"status": "ok", "app": settings.app_name, "cleaned_stuck": cleaned}

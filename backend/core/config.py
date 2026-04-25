@@ -1,3 +1,5 @@
+from urllib.parse import quote
+
 from pydantic_settings import BaseSettings
 
 
@@ -6,6 +8,7 @@ class Settings(BaseSettings):
     app_env: str = "development"
     debug: bool = True
     api_key: str = "dev-api-key-2026"
+    api_key_user_id: int = 1
     jwt_secret: str = "info-butler-jwt-secret-key-change-in-production-2026"
 
     mysql_host: str = "127.0.0.1"
@@ -25,17 +28,21 @@ class Settings(BaseSettings):
 
     feishu_webhook_url: str = ""
 
+    def model_post_init(self, __context) -> None:
+        if self.app_env == "production" and self.jwt_secret == "info-butler-jwt-secret-key-change-in-production-2026":
+            raise ValueError("JWT_SECRET must be changed from default value in production!")
+
     @property
     def mysql_dsn(self) -> str:
         return (
-            f"mysql+aiomysql://{self.mysql_user}:{self.mysql_password}"
+            f"mysql+aiomysql://{self.mysql_user}:{quote(self.mysql_password, safe='')}"
             f"@{self.mysql_host}:{self.mysql_port}/{self.mysql_database}"
             "?charset=utf8mb4"
         )
 
     @property
     def redis_url(self) -> str:
-        pw_part = f":{self.redis_password}@" if self.redis_password else "@"
+        pw_part = f":{quote(self.redis_password, safe='')}@" if self.redis_password else "@"
         return f"redis://{pw_part}{self.redis_host}:{self.redis_port}/{self.redis_db}"
 
     class Config:

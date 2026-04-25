@@ -9,7 +9,7 @@
       <n-space align="center">
         <span class="meta">{{ formatTime(data.created_at) }}</span>
         <n-tag v-if="data.source_type === 'url'" size="small" type="info">
-          <a v-if="data.source_url" :href="data.source_url" target="_blank" class="source-link">查看原文</a>
+          <a v-if="isSafeUrl(data.source_url)" :href="data.source_url" target="_blank" rel="noopener noreferrer" class="source-link">查看原文</a>
           <span v-else>URL 来源</span>
         </n-tag>
       </n-space>
@@ -90,13 +90,21 @@
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
+import { useMessage } from 'naive-ui'
 import api from '@/api'
 
 const route = useRoute()
+const message = useMessage()
 const data = ref<any>(null)
 const error = ref('')
 
 const taskId = ref(route.params.task_id as string)
+
+function isSafeUrl(url: string | null | undefined): boolean {
+  if (!url) return false
+  const lower = url.toLowerCase().trim()
+  return lower.startsWith('http://') || lower.startsWith('https://')
+}
 
 function statusType(status: string): 'success' | 'warning' | 'error' | 'default' {
   const map: Record<string, any> = { done: 'success', processing: 'warning', failed: 'error', parse_error: 'error' }
@@ -129,6 +137,7 @@ async function toggleAction(actionId: number, status: string) {
     await fetchDetail()
   } catch (e: any) {
     console.error('Failed to update action:', e)
+    message.error('更新行动项状态失败')
   }
 }
 

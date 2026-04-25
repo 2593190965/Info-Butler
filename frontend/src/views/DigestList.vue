@@ -50,8 +50,10 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { useMessage } from 'naive-ui'
 import api from '@/api'
 
+const message = useMessage()
 const loading = ref(false)
 const items = ref<any[]>([])
 const total = ref(0)
@@ -111,6 +113,7 @@ async function fetchData() {
     total.value = res.total || 0
   } catch (e: any) {
     console.error('Failed to load digest list:', e)
+    message.error('加载知识卡片失败，请稍后重试')
   } finally {
     loading.value = false
   }

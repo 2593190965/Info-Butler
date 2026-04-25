@@ -1,10 +1,16 @@
-from datetime import date, timedelta
+import logging
+import re
+from datetime import UTC, date, datetime, timedelta
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.models.action_item import ActionItem
 from backend.models.raw_info import RawInfo
+
+logger = logging.getLogger(__name__)
+
+WEEK_START_PATTERN = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 
 async def get_weekly_review(
@@ -13,19 +19,30 @@ async def get_weekly_review(
     week_start: str | None = None,
 ) -> dict:
     if week_start:
-        start = date.fromisoformat(week_start)
+        if not WEEK_START_PATTERN.match(week_start):
+            from backend.core.exceptions import ValidationError
+
+            raise ValidationError("week_start 格式无效，应为 YYYY-MM-DD")
+        try:
+            start = date.fromisoformat(week_start)
+        except ValueError as e:
+            from backend.core.exceptions import ValidationError
+
+            raise ValidationError(f"week_start 日期无效: {e}")
     else:
         today = date.today()
         start = today - timedelta(days=today.weekday())
 
     end = start + timedelta(days=6)
+    start_dt = datetime.combine(start, datetime.min.time(), tzinfo=UTC)
+    end_dt = datetime.combine(end + timedelta(days=1), datetime.min.time(), tzinfo=UTC)
 
     new_info_result = await db.execute(
         select(func.count())
         .select_from(RawInfo)
         .where(RawInfo.user_id == user_id)
-        .where(RawInfo.created_at >= start)
-        .where(RawInfo.created_at <= end)
+        .where(RawInfo.created_at >= start_dt)
+        .where(RawInfo.created_at < end_dt)
         .where(RawInfo.status == "done")
     )
     new_info_count = new_info_result.scalar() or 0
@@ -34,8 +51,8 @@ async def get_weekly_review(
         select(func.count())
         .select_from(ActionItem)
         .where(ActionItem.user_id == user_id)
-        .where(ActionItem.created_at >= start)
-        .where(ActionItem.created_at <= end)
+        .where(ActionItem.created_at >= start_dt)
+        .where(ActionItem.created_at < end_dt)
     )
     new_action_count = new_action_result.scalar() or 0
 
@@ -43,8 +60,8 @@ async def get_weekly_review(
         select(func.count())
         .select_from(ActionItem)
         .where(ActionItem.user_id == user_id)
-        .where(ActionItem.updated_at >= start)
-        .where(ActionItem.updated_at <= end)
+        .where(ActionItem.updated_at >= start_dt)
+        .where(ActionItem.updated_at < end_dt)
         .where(ActionItem.status == "done")
     )
     done_action_count = done_action_result.scalar() or 0
@@ -53,8 +70,8 @@ async def get_weekly_review(
         select(func.count())
         .select_from(ActionItem)
         .where(ActionItem.user_id == user_id)
-        .where(ActionItem.updated_at >= start)
-        .where(ActionItem.updated_at <= end)
+        .where(ActionItem.updated_at >= start_dt)
+        .where(ActionItem.updated_at < end_dt)
         .where(ActionItem.status == "ignored")
     )
     ignored_action_count = ignored_action_result.scalar() or 0

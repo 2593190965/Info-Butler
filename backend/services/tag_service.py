@@ -4,6 +4,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.models.tag import Tag, action_tags_table, info_tags_table
 
 
+def _escape_like(value: str) -> str:
+    return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
+
 async def list_tags(
     db: AsyncSession,
     user_id: int,
@@ -14,7 +18,7 @@ async def list_tags(
     query = select(Tag).where(Tag.user_id == user_id)
 
     if keyword:
-        query = query.where(Tag.name.ilike(f"%{keyword}%"))
+        query = query.where(Tag.name.ilike(f"%{_escape_like(keyword)}%", escape="\\"))
 
     count_query = select(func.count()).select_from(query.subquery())
     total = (await db.execute(count_query)).scalar() or 0
@@ -24,22 +28,36 @@ async def list_tags(
     result = await db.execute(query)
     tags = result.scalars().all()
 
-    items = []
-    for tag in tags:
-        info_count_q = select(func.count()).select_from(info_tags_table).where(info_tags_table.c.tag_id == tag.id)
-        info_count = (await db.execute(info_count_q)).scalar() or 0
+    if not tags:
+        return {"items": [], "total": total}
 
-        action_count_q = select(func.count()).select_from(action_tags_table).where(action_tags_table.c.tag_id == tag.id)
-        action_count = (await db.execute(action_count_q)).scalar() or 0
+    tag_ids = [tag.id for tag in tags]
 
-        items.append(
-            {
-                "id": tag.id,
-                "name": tag.name,
-                "info_count": info_count,
-                "action_count": action_count,
-            }
-        )
+    info_counts_q = (
+        select(info_tags_table.c.tag_id, func.count().label("cnt"))
+        .where(info_tags_table.c.tag_id.in_(tag_ids))
+        .group_by(info_tags_table.c.tag_id)
+    )
+    info_counts_rows = (await db.execute(info_counts_q)).all()
+    info_counts = {row.tag_id: row.cnt for row in info_counts_rows}
+
+    action_counts_q = (
+        select(action_tags_table.c.tag_id, func.count().label("cnt"))
+        .where(action_tags_table.c.tag_id.in_(tag_ids))
+        .group_by(action_tags_table.c.tag_id)
+    )
+    action_counts_rows = (await db.execute(action_counts_q)).all()
+    action_counts = {row.tag_id: row.cnt for row in action_counts_rows}
+
+    items = [
+        {
+            "id": tag.id,
+            "name": tag.name,
+            "info_count": info_counts.get(tag.id, 0),
+            "action_count": action_counts.get(tag.id, 0),
+        }
+        for tag in tags
+    ]
 
     return {"items": items, "total": total}
 
