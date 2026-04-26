@@ -8,15 +8,15 @@
 
 | 功能 | 说明 |
 |------|------|
-| **信息录入** | 支持文本和 URL 两种输入方式，自动抓取 URL 内容 |
+| **信息录入** | 支持文本和 URL 两种输入方式，自动抓取 URL 内容，可选择是否生成行动项和标签 |
 | **AI 摘要生成** | 调用 Dify Workflow 自动生成结构化摘要 |
 | **行动项提取** | 智能识别可执行任务，按 high/medium/low 优先级分类 |
 | **自动标签** | AI 生成 3-5 个标签，支持 CRUD 管理 |
-| **知识卡片库** | 分页浏览、关键词搜索、状态筛选 |
-| **行动项看板** | 三栏看板（待办 / 已完成 / 已忽略），支持状态切换 |
-| **周报复盘** | 本周统计概览（新增信息、行动项、完成率） |
+| **知识卡片库** | 分页浏览、关键词搜索、状态筛选、批量管理（删除/归档/添加标签） |
+| **行动项看板** | 三栏看板（待办 / 已完成 / 已忽略），支持状态切换和批量操作 |
+| **周复查仪表盘** | 可视化图表展示（30天趋势、标签分布、全局统计），数字卡片动画效果 |
 | **飞书通知** | 处理完成/失败时自动推送飞书群消息（摘要+行动项） |
-| **标签管理** | 独立管理页面，支持 CRUD + 搜索 + 关联统计 |
+| **标签管理** | 独立管理页面，支持 CRUD + 搜索 + 关联统计 + 批量操作（删除/合并） |
 | **信息详情** | 点击卡片查看完整内容，行动项状态可切换 |
 | **标签筛选** | 列表页点击标签快速按名称筛选信息 |
 | **JWT 认证** | 用户注册/登录，Bearer Token 鉴权，7天有效期 |
@@ -138,9 +138,12 @@ cd frontend && npm run dev
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
-| POST | `/api/v1/digest` | 提交信息（文本/URL），返回 task_id |
+| POST | `/api/v1/digest` | 提交信息（文本/URL），返回 task_id，支持可选生成行动项和标签 |
 | GET | `/api/v1/digest` | 知识卡片列表（分页、搜索、状态筛选） |
 | GET | `/api/v1/digest/{task_id}` | 查询处理结果 |
+| DELETE | `/api/v1/digest/batch` | 批量删除知识卡片 |
+| PATCH | `/api/v1/digest/batch/status` | 批量修改状态 |
+| POST | `/api/v1/digest/batch/tags` | 批量添加标签 |
 
 ### 行动项
 
@@ -149,6 +152,9 @@ cd frontend && npm run dev
 | GET | `/api/v1/actions` | 行动项列表（支持 status/priority 筛选） |
 | PATCH | `/api/v1/actions/{id}` | 更新单个行动项状态 |
 | PATCH | `/api/v1/actions/batch` | 批量更新行动项状态 |
+| DELETE | `/api/v1/actions/batch` | 批量删除行动项 |
+| PATCH | `/api/v1/actions/batch/priority` | 批量修改优先级 |
+| POST | `/api/v1/actions/batch/tags` | 批量添加标签 |
 
 ### 标签管理
 
@@ -158,12 +164,17 @@ cd frontend && npm run dev
 | POST | `/api/v1/tags` | 创建标签（自动去重） |
 | PUT | `/api/v1/tags/{id}` | 更新标签名称 |
 | DELETE | `/api/v1/tags/{id}` | 删除标签（清理关联） |
+| DELETE | `/api/v1/tags/batch` | 批量删除标签 |
+| POST | `/api/v1/tags/merge` | 合并标签 |
+| PATCH | `/api/v1/tags/batch/rename` | 批量重命名 |
 
 ### 复盘统计
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
 | GET | `/api/v1/review/weekly` | 本周统计数据 + 待办列表 |
+| GET | `/api/v1/review/monthly` | 月度趋势数据（近30天录入趋势、标签分布） |
+| GET | `/api/v1/review/stats` | 全局统计数据（总卡片、总行动项、完成率等） |
 
 ### 系统
 
@@ -171,7 +182,7 @@ cd frontend && npm run dev
 |------|------|------|
 | GET | `/health` | 健康检查 |
 
-所有 API 需要 Header: `X-API-Key: <your-api-key>`
+所有 API 需要 Header: `X-API-Key: <your-api-key>` 或 `Authorization: Bearer <jwt-token>`
 
 ## API 使用示例
 
@@ -319,7 +330,17 @@ cd frontend && npx vue-tsc --noEmit # 类型检查
 - [x] Phase 2: 异步任务 + 错误处理（9/9 完成）
 - [x] Phase 3: 完善 + 优化（8/8 完成）✅ 全部完成
 - [x] Phase 4: 功能完善与优化（5/5 + 2 补充完成）✅ 全部完成
-- [ ] Phase 5: 数据洞察与生产力增强（0/7 待开始）
+- [x] Phase 5: 数据洞察与生产力增强（3/10 完成）
+  - ✅ 5.2 仪表盘可视化（ECharts 图表、30天趋势、标签分布）
+  - ✅ 5.3 知识卡片批量管理（删除/归档/添加标签）
+  - ✅ 5.4 行动项批量管理增强（后端完成，删除/优先级/标签）
+  - ✅ 5.5 标签批量管理（后端完成，删除/合并/重命名）
+  - ⏳ 5.1 数据导出（Markdown/JSON/CSV）
+  - ⏳ 5.6 全文搜索增强（MySQL FULLTEXT）
+  - ⏳ 5.7 行动项提醒系统（到期提醒 + 逾期告警）
+  - ⏳ 5.8 信息详情页增强（关联推荐 + 版本历史）
+  - ⏳ 5.9 单元测试与集成测试完善
+  - ⏳ 5.10 API 限流与安全加固
 
 详细进度见 [tasks.md](./tasks.md)
 

@@ -15,6 +15,7 @@ from backend.core.base import Base
 from backend.core.config import settings
 from backend.core.database import engine
 from backend.core.exceptions import AppError
+from backend.core.middleware import RateLimitMiddleware, SecurityHeadersMiddleware
 
 logger = logging.getLogger(__name__)
 
@@ -42,6 +43,9 @@ app = FastAPI(
     debug=settings.debug,
     lifespan=lifespan,
 )
+
+app.add_middleware(RateLimitMiddleware)
+app.add_middleware(SecurityHeadersMiddleware)
 
 app.include_router(api_router, prefix="/api/v1")
 

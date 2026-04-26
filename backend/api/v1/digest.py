@@ -7,6 +7,9 @@ from backend.api.deps import get_current_user_id
 from backend.core.config import settings
 from backend.core.database import get_db
 from backend.schemas.digest import (
+    BatchAddTagsRequest,
+    BatchDeleteRequest,
+    BatchStatusUpdateRequest,
     DigestAccepted,
     DigestCreate,
     DigestListResponse,
@@ -14,6 +17,9 @@ from backend.schemas.digest import (
     PaginatedDigests,
 )
 from backend.services.digest_service import (
+    batch_add_tags,
+    batch_delete_digests,
+    batch_update_status,
     create_raw_info,
     get_digest_by_task_id,
     list_digests,
@@ -108,6 +114,7 @@ async def digest_list(
     status: str | None = None,
     keyword: str | None = None,
     tags: str | None = None,
+    exclude_id: int | None = None,
     db: AsyncSession = Depends(get_db),
     uid: int = Depends(get_current_user_id),
 ):
@@ -120,6 +127,7 @@ async def digest_list(
         status=status,
         keyword=keyword,
         tags=tag_list,
+        exclude_id=exclude_id,
     )
 
     items = []
@@ -147,3 +155,36 @@ async def digest_list(
         page=result["page"],
         page_size=result["page_size"],
     )
+
+
+@router.delete("/batch")
+async def batch_delete(
+    body: BatchDeleteRequest,
+    db: AsyncSession = Depends(get_db),
+    uid: int = Depends(get_current_user_id),
+):
+    """批量删除知识卡片"""
+    count = await batch_delete_digests(db, uid, body.ids)
+    return {"deleted_count": count}
+
+
+@router.patch("/batch/status")
+async def batch_status_update(
+    body: BatchStatusUpdateRequest,
+    db: AsyncSession = Depends(get_db),
+    uid: int = Depends(get_current_user_id),
+):
+    """批量更新知识卡片状态"""
+    count = await batch_update_status(db, uid, body.ids, body.status)
+    return {"updated_count": count}
+
+
+@router.post("/batch/tags")
+async def batch_add_tags_endpoint(
+    body: BatchAddTagsRequest,
+    db: AsyncSession = Depends(get_db),
+    uid: int = Depends(get_current_user_id),
+):
+    """批量为知识卡片添加标签"""
+    count = await batch_add_tags(db, uid, body.ids, body.tag_ids)
+    return {"updated_count": count}

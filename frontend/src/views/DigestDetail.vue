@@ -78,6 +78,22 @@
       <pre class="raw-text">{{ data.raw_text }}</pre>
     </n-card>
 
+    <!-- 关联推荐 -->
+    <n-card v-if="relatedItems.length" class="section-card">
+      <template #header>
+        <span class="section-title">关联推荐</span>
+      </template>
+      <n-list>
+        <n-list-item v-for="item in relatedItems" :key="item.task_id" @click="$router.push(`/digest/${item.task_id}`)">
+          <n-thing :title="item.title || '无标题'" :description="item.summary || '暂无摘要'">
+            <template #avatar>
+              <n-tag :type="statusType(item.status)" size="small">{{ statusLabel(item.status) }}</n-tag>
+            </template>
+          </n-thing>
+        </n-list-item>
+      </n-list>
+    </n-card>
+
     <n-spin v-if="!data && !error" size="large" style="margin-top:40px" />
     <n-result v-if="error" status="error" title="加载失败" :description="error">
       <template #footer>
@@ -97,6 +113,7 @@ const route = useRoute()
 const message = useMessage()
 const data = ref<any>(null)
 const error = ref('')
+const relatedItems = ref<any[]>([])
 
 const taskId = ref(route.params.task_id as string)
 
@@ -147,8 +164,20 @@ async function fetchDetail() {
   try {
     const res: any = await api.get(`/digest/${taskId.value}`)
     data.value = res
+    await fetchRelated(res.id)
   } catch (e: any) {
     error.value = e.message || '加载失败'
+  }
+}
+
+async function fetchRelated(infoId: number) {
+  try {
+    const res: any = await api.get('/digest', {
+      params: { page: 1, page_size: 5, exclude_id: infoId },
+    })
+    relatedItems.value = (res.items || []).slice(0, 4)
+  } catch (e) {
+    console.error('Failed to load related items:', e)
   }
 }
 

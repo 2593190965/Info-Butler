@@ -84,9 +84,7 @@ async def process_digest_sync(
                 result = await db.execute(stmt)
                 tag_id = result.inserted_primary_key[0]
                 if tag_id is None:
-                    existing = await db.execute(
-                        select(Tag.id).where(Tag.name == tag_name, Tag.user_id == uid).limit(1)
-                    )
+                    existing = await db.execute(select(Tag.id).where(Tag.name == tag_name, Tag.user_id == uid).limit(1))
                     tag_id = existing.scalar_one()
                 tag_ids.append(tag_id)
 
@@ -168,6 +166,7 @@ async def list_digests(
     status: str | None = None,
     keyword: str | None = None,
     tags: list[str] | None = None,
+    exclude_id: int | None = None,
 ):
     query = select(RawInfo).where(RawInfo.user_id == user_id)
 
@@ -180,6 +179,7 @@ async def list_digests(
         query = query.where(
             (RawInfo.summary.ilike(like_pattern, escape="\\"))
             | (RawInfo.raw_text.ilike(like_pattern, escape="\\"))
+            | (RawInfo.title.ilike(like_pattern, escape="\\"))
         )
 
     if tags:
@@ -191,6 +191,9 @@ async def list_digests(
                 .where(Tag.name.in_(tag_names), Tag.user_id == user_id)
             )
             query = query.where(RawInfo.id.in_(subq))
+
+    if exclude_id is not None:
+        query = query.where(RawInfo.id != exclude_id)
 
     count_query = select(func.count()).select_from(query.subquery())
     total = (await db.execute(count_query)).scalar() or 0
@@ -223,3 +226,68 @@ async def cleanup_stuck_processing(db: AsyncSession) -> int:
     if count > 0:
         logger.warning(f"Cleaned up {count} stuck-in-processing records")
     return count
+
+
+async def batch_delete_digests(db: AsyncSession, user_id: int, ids: list[int]) -> int:
+    """批量删除知识卡片（级联删除关联的行动项和标签关联）"""
+    # 验证所有 ID 都属于当前用户
+    result = await db.execute(select(RawInfo.id).where(RawInfo.id.in_(ids), RawInfo.user_id == user_id))
+    valid_ids = [row[0] for row in result.fetchall()]
+
+    if not valid_ids:
+        return 0
+
+    # 删除关联的行动项标签
+    action_ids_result = await db.execute(select(ActionItem.id).where(ActionItem.info_id.in_(valid_ids)))
+    action_ids = [row[0] for row in action_ids_result.fetchall()]
+
+    if action_ids:
+        await db.execute(action_tags_table.delete().where(action_tags_table.c.action_id.in_(action_ids)))
+        await db.execute(ActionItem.__table__.delete().where(ActionItem.id.in_(action_ids)))
+
+    # 删除知识卡片标签关联
+    await db.execute(info_tags_table.delete().where(info_tags_table.c.info_id.in_(valid_ids)))
+
+    # 删除知识卡片
+    result = await db.execute(RawInfo.__table__.delete().where(RawInfo.id.in_(valid_ids)))
+    await db.commit()
+
+    count = result.rowcount
+    logger.info(f"Batch deleted {count} digests for user {user_id}")
+    return count
+
+
+async def batch_update_status(db: AsyncSession, user_id: int, ids: list[int], status: str) -> int:
+    """批量更新知识卡片状态"""
+    result = await db.execute(
+        update(RawInfo).where(RawInfo.id.in_(ids), RawInfo.user_id == user_id).values(status=status)
+    )
+    await db.commit()
+
+    count = result.rowcount
+    logger.info(f"Batch updated status to '{status}' for {count} digests")
+    return count
+
+
+async def batch_add_tags(db: AsyncSession, user_id: int, ids: list[int], tag_ids: list[int]) -> int:
+    """批量为知识卡片添加标签"""
+    # 验证所有知识卡片和标签都属于当前用户
+    valid_info_result = await db.execute(select(RawInfo.id).where(RawInfo.id.in_(ids), RawInfo.user_id == user_id))
+    valid_info_ids = [row[0] for row in valid_info_result.fetchall()]
+
+    valid_tag_result = await db.execute(select(Tag.id).where(Tag.id.in_(tag_ids), Tag.user_id == user_id))
+    valid_tag_ids = [row[0] for row in valid_tag_result.fetchall()]
+
+    if not valid_info_ids or not valid_tag_ids:
+        return 0
+
+    # 批量插入标签关联（使用 ON DUPLICATE KEY UPDATE 避免重复）
+    for info_id in valid_info_ids:
+        for tag_id in valid_tag_ids:
+            stmt = mysql_insert(info_tags_table).values(info_id=info_id, tag_id=tag_id)
+            stmt = stmt.on_duplicate_key_update(info_id=stmt.inserted.info_id)
+            await db.execute(stmt)
+
+    await db.commit()
+    logger.info(f"Batch added {len(valid_tag_ids)} tags to {len(valid_info_ids)} digests")
+    return len(valid_info_ids)

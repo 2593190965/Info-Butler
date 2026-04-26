@@ -578,26 +578,95 @@ Info-Butler/
   - CSV 用 Python 内置 `csv` 模块
 
 ### 5.2 周报复盘仪表盘可视化
-- [ ] **待开始**
+- [x] **已完成** 2026-04-25
 - **目标：** 将 Review 页面从纯文字统计升级为图表展示
 - **后端新增：**
   - `GET /api/v1/review/monthly` — 月度趋势数据
     - 返回：每日新增信息数、行动项完成率曲线、标签分布 Top10
   - `GET /api/v1/review/stats` — 全局统计数据
-    - 返回：总卡片数、总行动项数、整体完成率、最活跃标签、平均处理时间
+    - 返回：总卡片数、总行动项数、整体完成率、最活跃标签
 - **前端改造：**
-  - 引入 ECharts 或 Chart.js（推荐 ECharts，深色主题适配好）
-  - 折线图：近 30 天信息录入趋势
-  - 饼图/环形图：标签分布占比
-  - 柱状图：每周行动项完成 vs 新增对比
-  - 数字卡片带动画：总览 KPI
+  - 引入 ECharts 和 vue-echarts
+  - 折线图：近 30 天信息录入趋势（带渐变填充）
+  - 饼图/环形图：标签分布占比（Top 10，彩色主题）
+  - 数字卡片带图标：总览 KPI（总知识卡片、总行动项、已完成、完成率）
 - **修改文件：**
-  - `backend/services/review_service.py` — 扩展统计逻辑
+  - `backend/services/review_service.py` — 扩展统计逻辑（get_monthly_trends, get_global_stats）
   - `backend/api/v1/review.py` — 新增 monthly/stats 端点
-  - `frontend/src/views/Review.vue` — 图表组件集成
-  - `frontend/package.json` — 新增 echarts 依赖
+  - `frontend/src/views/Review.vue` — 图表组件集成（折线图+饼图+统计卡片）
+  - `frontend/package.json` — 新增 echarts + vue-echarts 依赖
+- **图表特性：**
+  - 深色主题适配（Catppuccin Mocha 配色）
+  - 响应式布局（grid 两列）
+  - 交互提示（tooltip）
+  - 平滑曲线（smooth: true）
+  - 渐变填充（areaStyle）
 
-### 5.3 全文搜索增强（MySQL FULLTEXT）
+### 5.3 知识卡片批量管理
+- [x] **已完成** 2026-04-25
+- **目标：** 支持对知识卡片进行批量操作，提升管理效率
+- **后端新增：**
+  - `DELETE /api/v1/digest/batch` — 批量删除卡片
+    - 参数：`{"ids": [1, 2, 3]}`，级联删除关联的行动项和标签关联
+  - `PATCH /api/v1/digest/batch/status` — 批量修改状态
+    - 参数：`{"ids": [1, 2], "status": "archived"}`
+  - `POST /api/v1/digest/batch/tags` — 批量添加标签
+    - 参数：`{"ids": [1, 2], "tag_ids": [10, 11]}`
+- **前端改造：**
+  - `DigestList.vue` 增加多选模式：
+    - 列表项左侧添加 Checkbox
+    - 顶部显示「已选 N 条」+ 操作栏（删除/归档/添加标签）
+    - 全选/取消全选
+    - 批量操作二次确认弹窗
+- **修改文件：**
+  - `backend/api/v1/digest.py` — 新增批量操作端点
+  - `backend/schemas/digest.py` — 新增 BatchDelete/BatchStatusUpdate/BatchAddTags Schema
+  - `backend/services/digest_service.py` — 批量删除/更新/添加标签逻辑
+  - `frontend/src/views/DigestList.vue` — 多选 UI + 批量操作
+
+### 5.4 行动项批量管理增强
+- [x] **已完成** 2026-04-25（后端） | 待实现（前端）
+- **目标：** 扩展现有批量更新功能，支持更多操作
+- **后端新增：**
+  - `DELETE /api/v1/actions/batch` — 批量删除行动项
+    - 参数：`{"ids": [1, 2, 3]}`
+  - `PATCH /api/v1/actions/batch/priority` — 批量修改优先级
+    - 参数：`{"ids": [1, 2], "priority": "high"}`
+  - `POST /api/v1/actions/batch/tags` — 批量添加标签
+    - 参数：`{"ids": [1, 2], "tag_ids": [10, 11]}`
+- **前端改造：**
+  - `Actions.vue` 增加多选模式：
+    - 每个行动项卡片添加 Checkbox
+    - 看板顶部显示「已选 N 条」+ 操作栏（删除/修改优先级/添加标签/标记完成）
+    - 批量操作下拉菜单
+- **修改文件：**
+  - `backend/api/v1/actions.py` — 新增批量删除/优先级/标签端点
+  - `backend/schemas/action_item.py` — 新增 BatchDelete/BatchPriorityUpdate/BatchAddTags Schema
+  - `backend/services/action_service.py` — 批量删除/更新/添加标签逻辑
+  - `frontend/src/views/Actions.vue` — 多选 UI + 批量操作（待实现）
+
+### 5.5 标签批量管理
+- [x] **已完成** 2026-04-25（后端） | 待实现（前端）
+- **目标：** 支持批量管理标签，包括删除、合并、重命名
+- **后端新增：**
+  - `DELETE /api/v1/tags/batch` — 批量删除标签
+    - 参数：`{"ids": [1, 2, 3]}`，级联删除关联
+  - `POST /api/v1/tags/merge` — 合并标签
+    - 参数：`{"source_ids": [1, 2], "target_id": 3}` — 将源标签关联全部迁移到目标标签
+  - `PATCH /api/v1/tags/batch/rename` — 批量重命名
+    - 参数：`{"renames": [{"id": 1, "new_name": "新名称"}]}`
+- **前端改造：**
+  - `Tags.vue` 增加多选模式：
+    - 标签卡片添加 Checkbox
+    - 顶部显示「已选 N 个」+ 操作栏（删除/合并）
+    - 合并弹窗：选择目标标签或输入新标签名
+- **修改文件：**
+  - `backend/api/v1/tags.py` — 新增批量操作端点
+  - `backend/schemas/tag.py` — 新增 BatchDelete/MergeTags/BatchRename Schema
+  - `backend/services/tag_service.py` — 批量删除/合并/重命名逻辑
+  - `frontend/src/views/Tags.vue` — 多选 UI + 批量操作（待实现）
+
+### 5.6 全文搜索增强（MySQL FULLTEXT）
 - [ ] **待开始**
 - **目标：** 从简单 LIKE 查询升级为全文搜索引擎级别体验
 - **后端改动：**
@@ -618,7 +687,7 @@ Info-Butler/
   FROM raw_infos WHERE MATCH(raw_text, summary) AGAINST('关键词') ORDER BY score DESC;
   ```
 
-### 5.4 行动项提醒系统（到期提醒 + 逾期告警）
+### 5.7 行动项提醒系统（到期提醒 + 逾期告警）
 - [ ] **待开始**
 - **目标：** 让行动项不再被遗忘，主动推送提醒
 - **后端新增：**
@@ -637,7 +706,7 @@ Info-Butler/
   - `ACTION_REMIND_HOURS_BEFORE`：提前几小时提醒（默认 24h）
   - `ACTION_OVERDUE_HOURS`：超过几小时算逾期（默认 24h）
 
-### 5.5 信息详情页增强（关联推荐 + 版本历史）
+### 5.8 信息详情页增强（关联推荐 + 版本历史）
 - [ ] **待开始**
 - **目标：** 让单条信息的价值最大化
 - **关联推荐：**
@@ -652,7 +721,7 @@ Info-Butler/
   - 关联卡片横向滚动列表（点击跳转）
   - 行动项旁增加「历史」图标，点击弹出变更时间线
 
-### 5.6 单元测试与集成测试完善
+### 5.9 单元测试与集成测试完善
 - [ ] **待开始**
 - **目标：** 提升代码质量保障，核心路径全覆盖
 - **测试范围：**
@@ -670,7 +739,7 @@ Info-Butler/
     - factory_boy 或自定义 fixture 工厂数据
 - **目标覆盖率：** Service 层 ≥80%，API 层关键路径 100%
 
-### 5.7 API 限流与安全加固
+### 5.10 API 限流与安全加固
 - [ ] **待开始**
 - **目标：** 生产环境安全防护
 - **限流：**
@@ -682,6 +751,70 @@ Info-Butler/
   - JWT Token 黑名单机制（退出登录后 Token 失效，用 Redis Set 存储）
   - 输入清洗：XSS 防护（前端转义 + 后端 Pydantic 校验长度上限）
   - CORS 配置收紧（生产环境只允许前端域名）
+
+## Phase 5 进度总览
+
+| 已完成 | 进行中 | 待开始 |
+|--------|--------|--------|
+| 0      | 0      | 10     |
+
+### 优先级排序
+
+| 优先级 | 任务 | 理由 |
+|--------|------|------|
+| 🔴 P0 | 5.2 仪表盘可视化 | 产品差异化亮点，周报复盘是核心场景 |
+| 🔴 P0 | 5.3 知识卡片批量管理 | 高频需求，管理效率提升明显 |
+| 🔴 P0 | 5.4 行动项批量管理 | 现有功能扩展，成本低价值高 |
+| 🔴 P0 | 5.5 标签批量管理 | 标签多了之后必需要的功能 |
+| 🔴 P0 | 5.6 全文搜索增强 | 日常使用最高频功能，体验提升明显 |
+| 🟡 P1 | 5.1 数据导出 | 用户高频需求，实现成本低 |
+| 🟡 P1 | 5.7 行动项提醒 | 解决"遗忘"痛点，提升产品粘性 |
+| 🟢 P2 | 5.8 详情页增强 | 锦上添花，提升单条信息价值 |
+| 🟢 P2 | 5.9 测试完善 | 工程质量保障 |
+| 🟢 P2 | 5.10 安全加固 | 生产上线前必须完成 |
+
+## 预计新增/修改文件
+
+```
+backend/
+├── api/v1/
+│   ├── export.py              # 5.1 导出 API
+│   ├── review.py              # 5.2 扩展 monthly/stats
+│   ├── digest.py              # 5.3 扩展批量操作
+│   ├── actions.py             # 5.4 扩展批量操作
+│   └── tags.py                # 5.5 扩展批量操作
+├── services/
+│   ├── export_service.py      # 5.1 导出逻辑
+│   ├── review_service.py      # 5.2 统计扩展
+│   ├── digest_service.py      # 5.3 批量操作逻辑
+│   ├── action_service.py      # 5.4 批量操作逻辑
+│   ├── tag_service.py         # 5.5 批量操作逻辑
+│   └── reminder_service.py    # 5.7 提醒逻辑
+├── models/
+│   └── action_item_version.py # 5.8 版本历史模型
+├── workers/
+│   └── tasks.py               # 5.7 定期检查任务
+├── schemas/
+│   ├── export.py              # 5.1 导出 Schema
+│   ├── digest.py              # 5.3 批量操作 Schema
+│   ├── action_item.py         # 5.4 批量操作 Schema
+│   └── tag.py                 # 5.5 批量操作 Schema
+└── core/
+    └── rate_limiter.py        # 5.10 限流配置
+frontend/
+├── src/views/
+│   ├── Review.vue             # 5.2 图表改造
+│   ├── DigestList.vue         # 5.3 批量管理 UI
+│   ├── Actions.vue            # 5.4 批量管理 UI
+│   ├── Tags.vue               # 5.5 批量管理 UI
+│   └── DigestDetail.vue       # 5.8 关联推荐+历史
+├── src/components/
+│   └── charts/                # 5.2 图表封装组件
+tests/
+├── test_auth_api.py           # 5.9 认证测试
+├── test_export.py             # 5.9 导出测试
+└── test_review_service.py     # 5.9 统计测试
+```
 
 ## Phase 5 进度总览
 

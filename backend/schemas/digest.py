@@ -48,3 +48,17 @@ class PaginatedDigests(BaseModel):
     total: int
     page: int
     page_size: int
+
+
+class BatchDeleteRequest(BaseModel):
+    ids: list[int] = Field(..., min_length=1, description="要删除的知识卡片 ID 列表")
+
+
+class BatchStatusUpdateRequest(BaseModel):
+    ids: list[int] = Field(..., min_length=1, description="要更新的知识卡片 ID 列表")
+    status: str = Field(..., pattern="^(done|archived)$", description="目标状态")
+
+
+class BatchAddTagsRequest(BaseModel):
+    ids: list[int] = Field(..., min_length=1, description="要添加标签的知识卡片 ID 列表")
+    tag_ids: list[int] = Field(..., min_length=1, description="要添加的标签 ID 列表")

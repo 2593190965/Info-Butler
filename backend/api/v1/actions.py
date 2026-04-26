@@ -6,11 +6,17 @@ from backend.core.database import get_db
 from backend.schemas.action_item import (
     ActionItemResponse,
     ActionItemUpdate,
+    BatchActionAddTags,
+    BatchActionDelete,
+    BatchActionPriorityUpdate,
     BatchActionUpdate,
     PaginatedActions,
 )
 from backend.services.action_service import (
+    batch_add_tags_to_actions,
+    batch_delete_actions,
     batch_update_actions,
+    batch_update_priority,
     get_action_by_id,
     list_actions,
     update_action,
@@ -105,3 +111,36 @@ async def update_action_item(
         info_summary=info_summary,
         created_at=updated.created_at.isoformat() if updated.created_at else "",
     )
+
+
+@router.delete("/batch")
+async def batch_delete(
+    body: BatchActionDelete,
+    db: AsyncSession = Depends(get_db),
+    uid: int = Depends(get_current_user_id),
+):
+    """批量删除行动项"""
+    count = await batch_delete_actions(db, uid, body.ids)
+    return {"deleted_count": count}
+
+
+@router.patch("/batch/priority")
+async def batch_priority_update(
+    body: BatchActionPriorityUpdate,
+    db: AsyncSession = Depends(get_db),
+    uid: int = Depends(get_current_user_id),
+):
+    """批量更新行动项优先级"""
+    count = await batch_update_priority(db, uid, body.ids, body.priority)
+    return {"updated_count": count}
+
+
+@router.post("/batch/tags")
+async def batch_add_tags_endpoint(
+    body: BatchActionAddTags,
+    db: AsyncSession = Depends(get_db),
+    uid: int = Depends(get_current_user_id),
+):
+    """批量为行动项添加标签"""
+    count = await batch_add_tags_to_actions(db, uid, body.ids, body.tag_ids)
+    return {"updated_count": count}

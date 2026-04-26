@@ -3,6 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from backend.models.action_item import ActionItem
+from backend.models.tag import Tag, action_tags_table
 
 
 async def list_actions(
@@ -80,3 +81,58 @@ async def batch_update_actions(
     result = await db.execute(stmt)
     await db.commit()
     return result.rowcount
+
+
+async def batch_delete_actions(db: AsyncSession, user_id: int, ids: list[int]) -> int:
+    """批量删除行动项"""
+    # 删除关联的标签
+    await db.execute(action_tags_table.delete().where(action_tags_table.c.action_id.in_(ids)))
+
+    # 删除行动项
+    result = await db.execute(
+        ActionItem.__table__.delete().where(ActionItem.id.in_(ids), ActionItem.user_id == user_id)
+    )
+    await db.commit()
+    return result.rowcount
+
+
+async def batch_update_priority(db: AsyncSession, user_id: int, ids: list[int], priority: str) -> int:
+    """批量更新行动项优先级"""
+    result = await db.execute(
+        update(ActionItem)
+        .where(ActionItem.id.in_(ids), ActionItem.user_id == user_id)
+        .values(priority=priority)
+    )
+    await db.commit()
+    return result.rowcount
+
+
+async def batch_add_tags_to_actions(
+    db: AsyncSession, user_id: int, action_ids: list[int], tag_ids: list[int]
+) -> int:
+    """批量为行动项添加标签"""
+    # 验证所有行动项和标签都属于当前用户
+    valid_action_result = await db.execute(
+        select(ActionItem.id).where(ActionItem.id.in_(action_ids), ActionItem.user_id == user_id)
+    )
+    valid_action_ids = [row[0] for row in valid_action_result.fetchall()]
+
+    valid_tag_result = await db.execute(
+        select(Tag.id).where(Tag.id.in_(tag_ids), Tag.user_id == user_id)
+    )
+    valid_tag_ids = [row[0] for row in valid_tag_result.fetchall()]
+
+    if not valid_action_ids or not valid_tag_ids:
+        return 0
+
+    # 批量插入标签关联
+    from sqlalchemy.dialects.mysql import insert as mysql_insert
+
+    for action_id in valid_action_ids:
+        for tag_id in valid_tag_ids:
+            stmt = mysql_insert(action_tags_table).values(action_id=action_id, tag_id=tag_id)
+            stmt = stmt.on_duplicate_key_update(action_id=stmt.inserted.action_id)
+            await db.execute(stmt)
+
+    await db.commit()
+    return len(valid_action_ids)

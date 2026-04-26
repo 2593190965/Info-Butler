@@ -99,3 +99,102 @@ async def delete_tag(db: AsyncSession, tag_id: int, user_id: int) -> bool:
     await db.delete(tag)
     await db.commit()
     return True
+
+
+async def batch_delete_tags(db: AsyncSession, user_id: int, ids: list[int]) -> int:
+    """批量删除标签"""
+    # 验证所有标签都属于当前用户
+    valid_result = await db.execute(select(Tag.id).where(Tag.id.in_(ids), Tag.user_id == user_id))
+    valid_ids = [row[0] for row in valid_result.fetchall()]
+
+    if not valid_ids:
+        return 0
+
+    # 删除关联
+    await db.execute(info_tags_table.delete().where(info_tags_table.c.tag_id.in_(valid_ids)))
+    await db.execute(action_tags_table.delete().where(action_tags_table.c.tag_id.in_(valid_ids)))
+
+    # 删除标签
+    result = await db.execute(Tag.__table__.delete().where(Tag.id.in_(valid_ids)))
+    await db.commit()
+
+    return result.rowcount
+
+
+async def merge_tags(
+    db: AsyncSession, user_id: int, source_ids: list[int], target_id: int
+) -> int:
+    """合并标签（将源标签的关联全部迁移到目标标签）"""
+    # 验证目标标签存在且属于当前用户
+    target_tag = await get_tag_by_id(db, target_id, user_id)
+    if not target_tag:
+        return 0
+
+    # 验证源标签都属于当前用户，排除目标标签
+    valid_source_result = await db.execute(
+        select(Tag.id).where(
+            Tag.id.in_(source_ids),
+            Tag.user_id == user_id,
+            Tag.id != target_id,
+        )
+    )
+    valid_source_ids = [row[0] for row in valid_source_result.fetchall()]
+
+    if not valid_source_ids:
+        return 0
+
+    # 迁移 info_tags 关联
+    from sqlalchemy.dialects.mysql import insert as mysql_insert
+
+    # 查询所有源标签关联的信息
+    info_assoc_result = await db.execute(
+        select(info_tags_table.c.info_id, info_tags_table.c.tag_id)
+        .where(info_tags_table.c.tag_id.in_(valid_source_ids))
+    )
+    info_assocs = info_assoc_result.fetchall()
+
+    # 为每个信息添加目标标签（使用 ON DUPLICATE KEY UPDATE 避免重复）
+    for info_id, _ in info_assocs:
+        stmt = mysql_insert(info_tags_table).values(info_id=info_id, tag_id=target_id)
+        stmt = stmt.on_duplicate_key_update(info_id=stmt.inserted.info_id)
+        await db.execute(stmt)
+
+    # 迁移 action_tags 关联
+    action_assoc_result = await db.execute(
+        select(action_tags_table.c.action_id, action_tags_table.c.tag_id)
+        .where(action_tags_table.c.tag_id.in_(valid_source_ids))
+    )
+    action_assocs = action_assoc_result.fetchall()
+
+    for action_id, _ in action_assocs:
+        stmt = mysql_insert(action_tags_table).values(action_id=action_id, tag_id=target_id)
+        stmt = stmt.on_duplicate_key_update(action_id=stmt.inserted.action_id)
+        await db.execute(stmt)
+
+    # 删除源标签的关联
+    await db.execute(info_tags_table.delete().where(info_tags_table.c.tag_id.in_(valid_source_ids)))
+    await db.execute(action_tags_table.delete().where(action_tags_table.c.tag_id.in_(valid_source_ids)))
+
+    # 删除源标签
+    await db.execute(Tag.__table__.delete().where(Tag.id.in_(valid_source_ids)))
+    await db.commit()
+
+    return len(valid_source_ids)
+
+
+async def batch_rename_tags(
+    db: AsyncSession, user_id: int, renames: list[dict]
+) -> int:
+    """批量重命名标签"""
+    count = 0
+    for item in renames:
+        tag_id = item["id"]
+        new_name = item["new_name"]
+
+        tag = await get_tag_by_id(db, tag_id, user_id)
+        if tag:
+            tag.name = new_name
+            count += 1
+
+    await db.commit()
+    return count

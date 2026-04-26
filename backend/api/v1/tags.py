@@ -3,12 +3,23 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.api.deps import get_current_user_id
 from backend.core.database import get_db
-from backend.schemas.tag import PaginatedTags, TagCreate, TagResponse, TagUpdate
+from backend.schemas.tag import (
+    BatchTagDelete,
+    BatchTagRenameRequest,
+    MergeTagsRequest,
+    PaginatedTags,
+    TagCreate,
+    TagResponse,
+    TagUpdate,
+)
 from backend.services.tag_service import (
+    batch_delete_tags,
+    batch_rename_tags,
     create_tag,
     delete_tag,
     get_tag_by_id,
     list_tags,
+    merge_tags,
     update_tag,
 )
 
@@ -71,3 +82,36 @@ async def tag_delete(
     if not deleted:
         raise HTTPException(status_code=404, detail="Tag not found")
     return {"deleted": True}
+
+
+@router.delete("/batch")
+async def batch_delete(
+    body: BatchTagDelete,
+    db: AsyncSession = Depends(get_db),
+    uid: int = Depends(get_current_user_id),
+):
+    """批量删除标签"""
+    count = await batch_delete_tags(db, uid, body.ids)
+    return {"deleted_count": count}
+
+
+@router.post("/merge")
+async def merge_tags_endpoint(
+    body: MergeTagsRequest,
+    db: AsyncSession = Depends(get_db),
+    uid: int = Depends(get_current_user_id),
+):
+    """合并标签"""
+    count = await merge_tags(db, uid, body.source_ids, body.target_id)
+    return {"merged_count": count}
+
+
+@router.patch("/batch/rename")
+async def batch_rename(
+    body: BatchTagRenameRequest,
+    db: AsyncSession = Depends(get_db),
+    uid: int = Depends(get_current_user_id),
+):
+    """批量重命名标签"""
+    count = await batch_rename_tags(db, uid, [item.model_dump() for item in body.renames])
+    return {"renamed_count": count}

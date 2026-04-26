@@ -32,6 +32,20 @@ class BatchActionUpdate(BaseModel):
     status: str = Field(..., pattern="^(pending|done|ignored)$")
 
 
+class BatchActionDelete(BaseModel):
+    ids: list[int] = Field(..., min_length=1, description="要删除的行动项 ID 列表")
+
+
+class BatchActionPriorityUpdate(BaseModel):
+    ids: list[int] = Field(..., min_length=1, description="要更新的行动项 ID 列表")
+    priority: str = Field(..., pattern="^(high|medium|low)$", description="目标优先级")
+
+
+class BatchActionAddTags(BaseModel):
+    ids: list[int] = Field(..., min_length=1, description="要添加标签的行动项 ID 列表")
+    tag_ids: list[int] = Field(..., min_length=1, description="要添加的标签 ID 列表")
+
+
 class PaginatedActions(BaseModel):
     items: list[ActionItemResponse]
     total: int

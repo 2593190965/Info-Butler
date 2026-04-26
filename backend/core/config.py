@@ -28,6 +28,9 @@ class Settings(BaseSettings):
 
     feishu_webhook_url: str = ""
 
+    rate_limit_requests: int = 100
+    rate_limit_window: int = 60
+
     def model_post_init(self, __context) -> None:
         if self.app_env == "production" and self.jwt_secret == "info-butler-jwt-secret-key-change-in-production-2026":
             raise ValueError("JWT_SECRET must be changed from default value in production!")
