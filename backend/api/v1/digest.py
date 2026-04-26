@@ -107,6 +107,54 @@ async def get_digest(
     )
 
 
+@router.get("/{task_id}/related")
+async def get_related_digests(
+    task_id: str,
+    db: AsyncSession = Depends(get_db),
+    uid: int = Depends(get_current_user_id),
+):
+    raw_info = await get_digest_by_task_id(db, task_id, uid)
+    if not raw_info:
+        raise HTTPException(status_code=404, detail="Task not found")
+
+    tag_names = [t.name for t in raw_info.tags] if raw_info.tags else []
+    result = await list_digests(
+        db=db,
+        user_id=uid,
+        page=1,
+        page_size=5,
+        status="done",
+        tags=tag_names if tag_names else None,
+        exclude_id=raw_info.id,
+    )
+
+    items = []
+    for info in result["items"]:
+        tag_list = [t.name for t in info.tags] if info.tags else []
+        items.append(
+            DigestListResponse(
+                id=info.id,
+                task_id=info.task_id,
+                title=info.title,
+                summary=info.summary,
+                status=info.status,
+                tags=tag_list,
+                action_count=len(info.action_items) if info.action_items else 0,
+                pending_action_count=(
+                    sum(1 for a in info.action_items if a.status == "pending") if info.action_items else 0
+                ),
+                created_at=info.created_at.isoformat() if info.created_at else "",
+            )
+        )
+
+    return PaginatedDigests(
+        items=items,
+        total=result["total"],
+        page=result["page"],
+        page_size=result["page_size"],
+    )
+
+
 @router.get("", response_model=PaginatedDigests)
 async def digest_list(
     page: int = Query(1, ge=1),

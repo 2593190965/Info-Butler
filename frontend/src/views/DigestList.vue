@@ -3,7 +3,7 @@
     <h2>知识卡片</h2>
 
     <n-space class="filter-bar" align="center" :wrap="true">
-      <n-input v-model:value="keyword" placeholder="搜索关键词" clearable style="width: 200px" @keyup.enter="fetchData" />
+      <n-input v-model:value="keyword" placeholder="搜索关键词" clearable style="width: 200px" @input="onSearchInput" @keyup.enter="fetchData" />
       <n-select v-model:value="statusFilter" :options="statusOptions" placeholder="状态筛选" clearable style="width: 150px"
         @update:value="onStatusChange" />
       <n-button type="primary" @click="fetchData">查询</n-button>
@@ -41,7 +41,7 @@
             </n-space>
           </template>
 
-          <p class="summary">{{ item.summary || '暂无摘要' }}</p>
+          <p class="summary" v-html="highlightKeyword(item.summary || '暂无摘要')"></p>
 
           <template #footer>
             <n-space justify="space-between">
@@ -197,6 +197,22 @@ function clearSelection() {
   selectedIds.value.clear()
 }
 
+let searchTimer: ReturnType<typeof setTimeout> | null = null
+function onSearchInput() {
+  if (searchTimer) clearTimeout(searchTimer)
+  searchTimer = setTimeout(() => {
+    page.value = 1
+    fetchData()
+  }, 300)
+}
+
+function highlightKeyword(text: string): string {
+  if (!keyword.value) return text
+  const escaped = keyword.value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const regex = new RegExp(escaped, 'gi')
+  return text.replace(regex, '<mark class="highlight">$&</mark>')
+}
+
 async function handleBatchDelete() {
   dialog.warning({
     title: '确认删除',
@@ -338,6 +354,13 @@ onMounted(() => {
 .meta {
   font-size: 12px;
   color: #6c7086;
+}
+
+:deep(.highlight) {
+  background: #f9e2af;
+  color: #1e1e2e;
+  padding: 0 2px;
+  border-radius: 2px;
 }
 
 .pagination {

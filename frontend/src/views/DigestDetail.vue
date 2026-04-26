@@ -172,9 +172,7 @@ async function fetchDetail() {
 
 async function fetchRelated(infoId: number) {
   try {
-    const res: any = await api.get('/digest', {
-      params: { page: 1, page_size: 5, exclude_id: infoId },
-    })
+    const res: any = await api.get(`/digest/${taskId.value}/related`)
     relatedItems.value = (res.items || []).slice(0, 4)
   } catch (e) {
     console.error('Failed to load related items:', e)

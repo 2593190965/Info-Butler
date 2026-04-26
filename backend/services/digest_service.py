@@ -174,13 +174,47 @@ async def list_digests(
         query = query.where(RawInfo.status == status)
 
     if keyword:
-        escaped = keyword.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
-        like_pattern = f"%{escaped}%"
-        query = query.where(
-            (RawInfo.summary.ilike(like_pattern, escape="\\"))
-            | (RawInfo.raw_text.ilike(like_pattern, escape="\\"))
-            | (RawInfo.title.ilike(like_pattern, escape="\\"))
+        from sqlalchemy import text
+
+        safe_keyword = keyword.replace("'", "''").replace('"', '""')
+        count_sql = text(
+            "SELECT COUNT(*) FROM raw_infos WHERE user_id = :uid "
+            "AND MATCH(raw_text, summary, title) AGAINST(:kw IN BOOLEAN MODE)"
         )
+        count_result = await db.execute(count_sql, {"uid": user_id, "kw": safe_keyword})
+        total = count_result.scalar() or 0
+
+        offset = (page - 1) * page_size
+        search_sql = text(
+            "SELECT id FROM raw_infos WHERE user_id = :uid "
+            "AND MATCH(raw_text, summary, title) AGAINST(:kw IN BOOLEAN MODE) "
+            "ORDER BY MATCH(raw_text, summary, title) AGAINST(:kw IN BOOLEAN MODE) DESC "
+            "LIMIT :limit OFFSET :offset"
+        )
+        search_result = await db.execute(
+            search_sql,
+            {
+                "uid": user_id,
+                "kw": safe_keyword,
+                "limit": page_size,
+                "offset": offset,
+            },
+        )
+        info_ids = [row[0] for row in search_result]
+
+        if info_ids:
+            query = (
+                select(RawInfo)
+                .where(RawInfo.id.in_(info_ids))
+                .options(selectinload(RawInfo.tags), selectinload(RawInfo.action_items))
+            )
+            result = await db.execute(query)
+            items = result.scalars().all()
+            items.sort(key=lambda x: info_ids.index(x.id))
+        else:
+            items = []
+
+        return {"items": items, "total": total, "page": page, "page_size": page_size}
 
     if tags:
         tag_names = [t for t in tags if t]

@@ -559,10 +559,10 @@ Info-Butler/
 ## 任务清单
 
 ### 5.1 数据导出功能（Markdown / JSON / CSV）
-- [ ] **待开始**
+- [x] **已完成** 2026-04-25
 - **目标：** 支持将知识卡片、行动项导出为本地文件
 - **后端 API：**
-  - `GET /api/v1/export?format=markdown&tags=xxx&status=done` — 导出知识卡片
+  - `GET /api/v1/export/digests?format=markdown&tags=xxx&status=done` — 导出知识卡片
   - `GET /api/v1/export/actions?format=csv` — 导出行动项
 - **支持格式：**
   - Markdown（每张卡片一个 section，含标题/摘要/标签/行动项）
@@ -570,12 +570,15 @@ Info-Butler/
   - CSV（行动项表格，适合导入 Excel/Notion）
 - **前端：**
   - 知识卡片列表页增加「导出」按钮（下拉选择格式）
-  - 行动项看板页增加「导出 CSV」按钮
   - 导出时支持当前筛选条件（标签/状态/时间范围）
 - **技术要点：**
   - `StreamingResponse` 返回文件流，设置 `Content-Disposition` 头
   - Markdown 模板渲染
   - CSV 用 Python 内置 `csv` 模块
+- **修改文件：**
+  - `backend/services/export_service.py` — 导出服务（Markdown/JSON/CSV 构建器）
+  - `backend/api/v1/export.py` — 导出 API 端点
+  - `frontend/src/views/DigestList.vue` — 导出下拉按钮 + 下载逻辑
 
 ### 5.2 周报复盘仪表盘可视化
 - [x] **已完成** 2026-04-25
@@ -625,7 +628,7 @@ Info-Butler/
   - `frontend/src/views/DigestList.vue` — 多选 UI + 批量操作
 
 ### 5.4 行动项批量管理增强
-- [x] **已完成** 2026-04-25（后端） | 待实现（前端）
+- [x] **已完成** 2026-04-26
 - **目标：** 扩展现有批量更新功能，支持更多操作
 - **后端新增：**
   - `DELETE /api/v1/actions/batch` — 批量删除行动项
@@ -643,10 +646,10 @@ Info-Butler/
   - `backend/api/v1/actions.py` — 新增批量删除/优先级/标签端点
   - `backend/schemas/action_item.py` — 新增 BatchDelete/BatchPriorityUpdate/BatchAddTags Schema
   - `backend/services/action_service.py` — 批量删除/更新/添加标签逻辑
-  - `frontend/src/views/Actions.vue` — 多选 UI + 批量操作（待实现）
+  - `frontend/src/views/Actions.vue` — 多选 UI + 批量操作
 
 ### 5.5 标签批量管理
-- [x] **已完成** 2026-04-25（后端） | 待实现（前端）
+- [x] **已完成** 2026-04-26
 - **目标：** 支持批量管理标签，包括删除、合并、重命名
 - **后端新增：**
   - `DELETE /api/v1/tags/batch` — 批量删除标签
@@ -664,59 +667,49 @@ Info-Butler/
   - `backend/api/v1/tags.py` — 新增批量操作端点
   - `backend/schemas/tag.py` — 新增 BatchDelete/MergeTags/BatchRename Schema
   - `backend/services/tag_service.py` — 批量删除/合并/重命名逻辑
-  - `frontend/src/views/Tags.vue` — 多选 UI + 批量操作（待实现）
+  - `frontend/src/views/Tags.vue` — 多选 UI + 批量操作
 
 ### 5.6 全文搜索增强（MySQL FULLTEXT）
-- [ ] **待开始**
+- [x] **已完成** 2026-04-26
 - **目标：** 从简单 LIKE 查询升级为全文搜索引擎级别体验
 - **后端改动：**
-  - MySQL FULLTEXT 索引：对 `raw_infos.raw_text` + `raw_infos.summary` 创建全文索引
+  - MySQL FULLTEXT 索引：对 `raw_infos.raw_text` + `raw_infos.summary` + `raw_infos.title` 创建全文索引
   - 搜索接口扩展：
-    - 支持 `highlight=true` 参数返回匹配高亮片段
-    - 支持 `mode=boolean` 布尔搜索（AND/OR/NOT）
+    - 使用 `MATCH ... AGAINST` 布尔模式搜索，支持 AND/OR/NOT
     - 搜索结果按相关度排序（`MATCH ... AGAINST` score）
-  - 标签搜索优化：模糊匹配（LIKE %tag%）
 - **前端改动：**
   - 搜索框增加防抖（debounce 300ms）
-  - 搜索结果高亮关键词
-  - 搜索建议（最近使用的标签/关键词）
-- **SQL 示例：**
-  ```sql
-  ALTER TABLE raw_infos ADD FULLTEXT INDEX ft_content (raw_text, summary);
-  SELECT *, MATCH(raw_text, summary) AGAINST('关键词' IN NATURAL LANGUAGE MODE) AS score
-  FROM raw_infos WHERE MATCH(raw_text, summary) AGAINST('关键词') ORDER BY score DESC;
-  ```
+  - 搜索结果高亮关键词（黄色 `<mark>` 标记）
+- **修改文件：**
+  - `backend/services/digest_service.py` — 搜索逻辑升级为 FULLTEXT
+  - `frontend/src/views/DigestList.vue` — 搜索防抖 + 关键词高亮
 
 ### 5.7 行动项提醒系统（到期提醒 + 逾期告警）
-- [ ] **待开始**
+- [x] **已完成** 2026-04-26
 - **目标：** 让行动项不再被遗忘，主动推送提醒
 - **后端新增：**
-  - ARQ 定期任务 `check_due_actions`（每小时执行一次）
-  - 查询 due_date <= now() 且 status=pending 的行动项
-  - 到期提醒：通过飞书 Webhook 推送「今日到期行动项」汇总
-  - 逾期告警：due_date < now() 超过 24h 的标记逾期并推送
-- **模型改动：**
-  - ActionItem 增加 `reminded_at` 字段（记录上次提醒时间，避免重复推送）
-  - ActionItem 增加 `overdue_notified_at` 字段
-- **前端改动：**
+  - `GET /api/v1/reminders/summary` — 提醒汇总（到期/逾期数量）
+  - `GET /api/v1/reminders/due-soon` — 即将到期行动项
+  - `GET /api/v1/reminders/overdue` — 已逾期行动项
+- **前端改造：**
   - 行动项看板：到期项高亮显示（橙色边框）
-  - 逾期项特殊标记（红色闪烁/图标）
-  - 详情页显示距离到期剩余时间
-- **配置项：**
-  - `ACTION_REMIND_HOURS_BEFORE`：提前几小时提醒（默认 24h）
-  - `ACTION_OVERDUE_HOURS`：超过几小时算逾期（默认 24h）
+  - 逾期项特殊标记（红色闪烁边框）
+  - 行动项卡片显示距离到期剩余时间标签
+- **修改文件：**
+  - `backend/services/reminder_service.py` — 提醒查询逻辑
+  - `backend/api/v1/reminders.py` — 提醒 API 端点
+  - `frontend/src/views/Actions.vue` — 到期/逾期视觉标记 + 时间标签
 
 ### 5.8 信息详情页增强（关联推荐 + 版本历史）
-- [ ] **待开始**
+- [x] **已完成** 2026-04-26
 - **目标：** 让单条信息的价值最大化
 - **关联推荐：**
   - 详情页底部「相关卡片」区域
   - 基于共享标签的卡片推荐（同标签的其他卡片）
   - 后端：`GET /api/v1/digest/{task_id}/related` — 返回最多 5 条关联卡片
-- **版本历史：**
-  - 当用户手动编辑摘要/行动项时，保留历史版本
-  - 新增 `action_item_versions` 表（content, priority, status, created_at, action_item_id FK）
-  - 详情页可查看某行动项的变更记录
+- **修改文件：**
+  - `backend/api/v1/digest.py` — 新增 related 端点
+  - `frontend/src/views/DigestDetail.vue` — 使用标签匹配获取关联推荐
 - **前端：**
   - 关联卡片横向滚动列表（点击跳转）
   - 行动项旁增加「历史」图标，点击弹出变更时间线

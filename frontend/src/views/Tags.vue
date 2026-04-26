@@ -9,14 +9,33 @@
         </template>
       </n-input>
       <n-button type="primary" @click="openCreateModal">新建标签</n-button>
+      <n-button :type="batchMode ? 'warning' : 'default'" @click="toggleBatchMode">
+        {{ batchMode ? '退出批量管理' : '批量管理' }}
+      </n-button>
     </n-space>
+
+    <!-- 批量操作栏 -->
+    <n-card v-if="batchMode && selectedIds.size > 0" class="batch-toolbar">
+      <n-space align="center">
+        <span>已选 {{ selectedIds.size }} 个</span>
+        <n-button size="small" @click="selectAll">全选</n-button>
+        <n-button size="small" @click="clearSelection">取消全选</n-button>
+        <n-button size="small" type="error" @click="handleBatchDelete">批量删除</n-button>
+        <n-button size="small" type="info" @click="showMergeModal = true">合并标签</n-button>
+      </n-space>
+    </n-card>
 
     <n-spin :show="loading">
       <div v-if="items.length" class="tag-list">
-        <n-card v-for="item in items" :key="item.id" hoverable size="small" class="tag-card">
+        <n-card v-for="item in items" :key="item.id" hoverable size="small" class="tag-card"
+          @click="batchMode ? toggleSelect(item.id) : null">
           <template #header>
             <n-space justify="space-between" align="center">
-              <span class="tag-name">{{ item.name }}</span>
+              <n-space align="center" :size="8">
+                <n-checkbox v-if="batchMode" :checked="selectedIds.has(item.id)"
+                  @update:checked="toggleSelect(item.id)" @click.stop />
+                <span class="tag-name">{{ item.name }}</span>
+              </n-space>
               <n-space align="center" :size="4">
                 <n-tag size="tiny" round type="info">{{ item.info_count || 0 }} 信息</n-tag>
                 <n-tag size="tiny" round type="warning">{{ item.action_count || 0 }} 行动项</n-tag>
@@ -25,8 +44,9 @@
           </template>
 
           <n-space justify="end" :size="8">
-            <n-button size="small" @click="openEditModal(item)">编辑</n-button>
-            <n-button size="small" type="error" ghost @click="handleDelete(item.id, item.name)">删除</n-button>
+            <n-button v-if="!batchMode" size="small" @click="openEditModal(item)">编辑</n-button>
+            <n-button v-if="!batchMode" size="small" type="error" ghost
+              @click="handleDelete(item.id, item.name)">删除</n-button>
           </n-space>
         </n-card>
       </div>
@@ -45,16 +65,31 @@
         </n-form-item>
       </n-form>
     </n-modal>
+
+    <!-- 合并标签弹窗 -->
+    <n-modal v-model:show="showMergeModal" preset="dialog" title="合并标签">
+      <n-space vertical>
+        <p>将选中的标签合并到目标标签：</p>
+        <n-select v-model:value="mergeTargetId" :options="mergeTargetOptions" placeholder="选择目标标签" clearable />
+        <n-divider>或创建新标签</n-divider>
+        <n-input v-model:value="mergeNewName" placeholder="输入新标签名称" />
+      </n-space>
+      <template #action>
+        <n-button @click="showMergeModal = false">取消</n-button>
+        <n-button type="primary" @click="handleMerge">确定</n-button>
+      </template>
+    </n-modal>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
-import { useMessage } from 'naive-ui'
+import { ref, reactive, computed, onMounted } from 'vue'
+import { useMessage, useDialog } from 'naive-ui'
 import { SearchOutline } from '@vicons/ionicons5'
 import api from '@/api'
 
 const message = useMessage()
+const dialog = useDialog()
 const loading = ref(false)
 const items = ref<any[]>([])
 const total = ref(0)
@@ -69,12 +104,25 @@ const formRef = ref<any>(null)
 
 const form = reactive({ name: '' })
 
+// 批量管理
+const batchMode = ref(false)
+const selectedIds = ref(new Set<number>())
+const showMergeModal = ref(false)
+const mergeTargetId = ref<number | null>(null)
+const mergeNewName = ref('')
+
 const rules = {
   name: [
     { required: true, message: '请输入标签名称', trigger: 'blur' },
     { min: 2, max: 20, message: '长度在 2-20 个字符', trigger: 'blur' },
   ],
 }
+
+const mergeTargetOptions = computed(() =>
+  items.value
+    .filter((t) => !selectedIds.value.has(t.id))
+    .map((t) => ({ label: t.name, value: t.id }))
+)
 
 function resetForm() {
   form.name = ''
@@ -118,6 +166,90 @@ async function handleDelete(id: number, name: string) {
     fetchData()
   } catch (e: any) {
     message.error(e.message || '删除失败')
+  }
+}
+
+function toggleBatchMode() {
+  batchMode.value = !batchMode.value
+  if (!batchMode.value) {
+    selectedIds.value.clear()
+  }
+}
+
+function toggleSelect(id: number) {
+  if (selectedIds.value.has(id)) {
+    selectedIds.value.delete(id)
+  } else {
+    selectedIds.value.add(id)
+  }
+  selectedIds.value = new Set(selectedIds.value)
+}
+
+function selectAll() {
+  items.value.forEach((item) => selectedIds.value.add(item.id))
+  selectedIds.value = new Set(selectedIds.value)
+}
+
+function clearSelection() {
+  selectedIds.value.clear()
+  selectedIds.value = new Set(selectedIds.value)
+}
+
+async function handleBatchDelete() {
+  if (selectedIds.value.size === 0) return
+  dialog.warning({
+    title: '确认删除',
+    content: `确定要删除选中的 ${selectedIds.value.size} 个标签吗？关联的信息和行动项不会被删除。`,
+    positiveText: '删除',
+    negativeText: '取消',
+    onPositiveClick: async () => {
+      try {
+        await api.delete('/tags/batch', { data: { ids: [...selectedIds.value] } })
+        message.success('已批量删除')
+        selectedIds.value.clear()
+        await fetchData()
+      } catch (e: any) {
+        message.error(e.response?.data?.message || '删除失败')
+      }
+    },
+  })
+}
+
+async function handleMerge() {
+  if (selectedIds.value.size === 0) return
+
+  const sourceIds = [...selectedIds.value]
+
+  if (mergeTargetId.value) {
+    if (sourceIds.includes(mergeTargetId.value)) {
+      message.error('目标标签不能是选中的标签之一')
+      return
+    }
+    try {
+      await api.post('/tags/merge', { source_ids: sourceIds, target_id: mergeTargetId.value })
+      message.success('标签已合并')
+      selectedIds.value.clear()
+      mergeTargetId.value = null
+      showMergeModal.value = false
+      await fetchData()
+    } catch (e: any) {
+      message.error(e.response?.data?.message || '合并失败')
+    }
+  } else if (mergeNewName.value.trim()) {
+    try {
+      const createRes: any = await api.post('/tags', { name: mergeNewName.value.trim() })
+      const targetId = createRes.id
+      await api.post('/tags/merge', { source_ids: sourceIds, target_id: targetId })
+      message.success('标签已合并到新标签')
+      selectedIds.value.clear()
+      mergeNewName.value = ''
+      showMergeModal.value = false
+      await fetchData()
+    } catch (e: any) {
+      message.error(e.response?.data?.message || '合并失败')
+    }
+  } else {
+    message.error('请选择目标标签或输入新标签名称')
   }
 }
 
@@ -171,5 +303,19 @@ onMounted(() => fetchData())
   margin-top: 20px;
   display: flex;
   justify-content: center;
+}
+
+.batch-toolbar {
+  margin-bottom: 16px;
+  background: #1e1e2e;
+  border: 1px solid #45475a;
+}
+
+.tag-card {
+  cursor: default;
+}
+
+.tag-card:has(.n-checkbox) {
+  cursor: pointer;
 }
 </style>
