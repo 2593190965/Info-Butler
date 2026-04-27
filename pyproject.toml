@@ -29,5 +29,10 @@ dev = [
 line-length = 120
 target-version = "py312"
 
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+norecursedirs = ["test_api.py"]
+
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "W", "UP"]

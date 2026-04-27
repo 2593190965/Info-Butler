@@ -4,7 +4,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.api.deps import get_current_user_info
 from backend.core.database import get_db
-from backend.core.security import create_access_token, get_password_hash, verify_password
+from backend.core.security import (
+    add_token_to_blacklist,
+    create_access_token,
+    get_password_hash,
+    verify_password,
+)
 from backend.models.user import User
 from backend.schemas.auth import TokenResponse, UserLogin, UserRegister, UserResponse
 
@@ -54,6 +59,15 @@ async def login(body: UserLogin, db: AsyncSession = Depends(get_db)):
         access_token=access_token,
         user=UserResponse(id=user.id, username=user.username, email=user.email, is_active=user.is_active),
     )
+
+
+@router.post("/logout")
+async def logout(user_info: dict = Depends(get_current_user_info)):
+    if user_info.get("type") == "jwt":
+        token = user_info["payload"].get("raw_token")
+        if token:
+            add_token_to_blacklist(token)
+    return {"message": "Logged out successfully"}
 
 
 @router.get("/me", response_model=UserResponse)

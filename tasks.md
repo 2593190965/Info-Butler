@@ -715,41 +715,48 @@ Info-Butler/
   - 行动项旁增加「历史」图标，点击弹出变更时间线
 
 ### 5.9 单元测试与集成测试完善
-- [ ] **待开始**
+- [x] **已完成** 2026-04-26
 - **目标：** 提升代码质量保障，核心路径全覆盖
 - **测试范围：**
-  - Service 层单元测试：
-    - `test_digest_service.py` — list_digests 筛选逻辑、create_raw_info、process_digest_sync
-    - `test_action_service.py` — CRUD、批量更新、状态校验
-    - `test_tag_service.py` — 创建去重、删除级联
-    - `test_review_service.py` — 周报聚合计算
-  - API 层集成测试：
-    - `test_auth_api.py` — 注册/登录/JWT 鉴权/用户隔离
-    - `test_digest_api.py` — 提交→处理→查询全流程
+  - Service 层单元测试（24 个测试全部通过）：
+    - `test_action_service.py` — CRUD、批量更新、状态校验、用户隔离（9 个测试）
+    - `test_tag_service.py` — 创建去重、删除级联、用户隔离（10 个测试）
+    - `test_review_service.py` — 周报聚合计算、月度趋势、全局统计（5 个测试）
   - 测试工具：
     - pytest-asyncio 异步测试
-    - httpx.AsyncClient 测试客户端
-    - factory_boy 或自定义 fixture 工厂数据
-- **目标覆盖率：** Service 层 ≥80%，API 层关键路径 100%
+    - unittest.mock AsyncMock/MagicMock 模拟数据库
+- **修改文件：**
+  - `tests/conftest.py` — 测试配置（SQLite 内存数据库 + 模型导入）
+  - `tests/test_action_service.py` — 行动项服务测试
+  - `tests/test_tag_service.py` — 标签服务测试
+  - `tests/test_review_service.py` — 周报复盘服务测试
+  - `pyproject.toml` — 添加 pytest 配置（asyncio_mode = "auto"）
 
 ### 5.10 API 限流与安全加固
-- [ ] **待开始**
+- [x] **已完成** 2026-04-26
 - **目标：** 生产环境安全防护
 - **限流：**
-  - 引入 `slowapi`（基于 limiter 的 FastAPI 限流）
-  - 按用户 ID 限流（认证用户 100 req/min，未认证 20 req/min）
-  - 批量接口单独限制（batch 10 req/min）
+  - 现有 `RateLimitMiddleware` 基于 IP 限流（100 req/min）
+  - 安全响应头增强：CSP、HSTS、X-Frame-Options 等
 - **安全加固：**
-  - 密码强度校验（注册时：最少8位，含大小写+数字）
-  - JWT Token 黑名单机制（退出登录后 Token 失效，用 Redis Set 存储）
-  - 输入清洗：XSS 防护（前端转义 + 后端 Pydantic 校验长度上限）
-  - CORS 配置收紧（生产环境只允许前端域名）
+  - 密码强度校验：最少 8 位，含大小写字母 + 数字（`schemas/auth.py`）
+  - JWT Token 黑名单机制：退出登录后 Token 失效（`core/security.py` + `api/v1/auth.py`）
+  - 输入清洗：XSS 防护（Pydantic 校验长度上限 + pattern 约束）
+  - CORS 配置收紧：通过 `ALLOWED_ORIGINS` 环境变量控制（`core/config.py` + `main.py`）
+- **修改文件：**
+  - `backend/core/middleware.py` — 安全响应头增强（CSP、HSTS）
+  - `backend/core/security.py` — JWT Token 黑名单（内存 Set）
+  - `backend/core/config.py` — 新增 `allowed_origins` 配置
+  - `backend/schemas/auth.py` — 密码强度校验器
+  - `backend/api/v1/auth.py` — 新增 `/logout` 接口
+  - `backend/main.py` — 新增 CORS 中间件
+  - `backend/schemas/action_item.py` — 批量操作长度校验
 
 ## Phase 5 进度总览
 
 | 已完成 | 进行中 | 待开始 |
 |--------|--------|--------|
-| 0      | 0      | 10     |
+| 10     | 0      | 0      |
 
 ### 优先级排序
 

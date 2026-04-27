@@ -1,31 +1,42 @@
 import pytest
 from httpx import ASGITransport, AsyncClient
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
+# 导入所有模型以确保 Base.metadata 包含所有表
+import backend.models  # noqa: F401
 from backend.core.base import Base
 from backend.core.config import settings
-from backend.core.database import async_session, engine
 from backend.main import app
+
+# 使用 SQLite 内存数据库进行测试
+SQLITE_URL = "sqlite+aiosqlite:///:memory:"
+
+test_engine = create_async_engine(
+    SQLITE_URL,
+    echo=False,
+)
+
+test_session_maker = async_sessionmaker(
+    test_engine,
+    class_=AsyncSession,
+    expire_on_commit=False,
+)
 
 
 @pytest.fixture
-def anyio_backend():
-    return "asyncio"
-
-
-@pytest.fixture(scope="session")
 async def setup_database():
     """创建测试数据库表"""
-    async with engine.begin() as conn:
+    async with test_engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     yield
-    async with engine.begin() as conn:
+    async with test_engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
 
 
 @pytest.fixture
 async def db_session(setup_database):
     """提供数据库会话"""
-    async with async_session() as session:
+    async with test_session_maker() as session:
         yield session
         await session.rollback()
 

@@ -28,7 +28,7 @@ class ActionItemResponse(BaseModel):
 
 
 class BatchActionUpdate(BaseModel):
-    ids: list[int] = Field(..., max_length=100)
+    ids: list[int] = Field(..., min_length=1, max_length=100)
     status: str = Field(..., pattern="^(pending|done|ignored)$")
 
 

@@ -10,6 +10,8 @@ from fastapi.responses import JSONResponse
 if sys.platform == "win32":
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
+from fastapi.middleware.cors import CORSMiddleware
+
 from backend.api.v1.router import api_router
 from backend.core.base import Base
 from backend.core.config import settings
@@ -42,6 +44,14 @@ app = FastAPI(
     title=settings.app_name,
     debug=settings.debug,
     lifespan=lifespan,
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.allowed_origins_list,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 app.add_middleware(RateLimitMiddleware)

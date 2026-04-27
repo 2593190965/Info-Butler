@@ -17,6 +17,20 @@ security_scheme = HTTPBearer(auto_error=False)
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7
 
+_token_blacklist: set[str] = set()
+
+
+def add_token_to_blacklist(token: str) -> None:
+    _token_blacklist.add(token)
+
+
+def is_token_blacklisted(token: str) -> bool:
+    return token in _token_blacklist
+
+
+def clear_token_blacklist() -> None:
+    _token_blacklist.clear()
+
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     return pwd_context.verify(plain_password, hashed_password)
@@ -51,6 +65,12 @@ async def get_current_user(
 
     if credentials:
         token = credentials.credentials
+        if is_token_blacklisted(token):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Token has been revoked",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
         payload = decode_access_token(token)
         if payload is None:
             raise HTTPException(
@@ -58,6 +78,7 @@ async def get_current_user(
                 detail="Invalid or expired token",
                 headers={"WWW-Authenticate": "Bearer"},
             )
+        payload["raw_token"] = token
         return {"sub": payload.get("sub"), "type": "jwt", "payload": payload}
 
     raise HTTPException(
