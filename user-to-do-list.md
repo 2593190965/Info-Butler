@@ -121,7 +121,40 @@ DIFY_WORKFLOW_ID=your-workflow-id
 
 ---
 
-## Phase 3 用户任务
+## Phase 6 用户任务
+
+### 已完成（后端自动完成，无需用户操作）
+
+- [x] **6.1 文件上传解析** — 支持 PDF/Word/Excel/TXT/Markdown 上传
+- [x] **6.2 RSS 订阅自动抓取** — RSS 订阅管理 + 自动解析
+- [x] **6.3 飞书双向集成** — Webhook 回调接口 + 自动处理
+
+### 用户需要完成的任务
+
+| # | 任务 | 状态 | 备注 |
+|---|------|------|------|
+| 1 | 配置飞书开放平台应用 | ⬜ 待完成 | 创建应用并获取 App ID / App Secret |
+| 2 | 配置飞书事件订阅 | ⬜ 待完成 | 在飞书开放平台配置回调 URL |
+| 3 | 填写 .env 飞书配置 | ⬜ 待完成 | FEISHU_APP_ID / FEISHU_APP_SECRET |
+
+### 飞书开放平台配置步骤
+
+1. 登录 [飞书开放平台](https://open.feishu.cn/)
+2. 创建企业自建应用
+3. 获取 App ID 和 App Secret
+4. 配置事件订阅：
+   - 订阅 URL：`https://your-domain.com/api/v1/webhook/feishu`
+   - 订阅事件：`im.message.receive_v1`
+5. 在 .env 中添加：
+   ```env
+   FEISHU_APP_ID=your-app-id
+   FEISHU_APP_SECRET=your-app-secret
+   FEISHU_WEBHOOK_URL=https://open.feishu.cn/open-apis/bot/v2/hook/your-webhook
+   ```
+
+---
+
+## Phase 6 完成状态
 
 ### 8. Dify Workflow 输出质量优化
 

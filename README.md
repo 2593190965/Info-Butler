@@ -29,6 +29,9 @@
 | **JWT Token 黑名单** | 退出登录后 Token 立即失效 |
 | **CORS 配置** | 支持通过环境变量控制允许的域名 |
 | **安全响应头** | CSP、HSTS、X-Frame-Options 等防护 |
+| **文件上传解析** | 支持 PDF/Word/Excel/TXT/Markdown 拖拽上传，自动触发 AI 处理 |
+| **RSS 订阅** | RSS 源订阅管理，自动抓取文章并 AI 处理，前端网格展示 |
+| **飞书双向集成** | 接收飞书机器人消息自动处理，返回摘要/行动项/标签 |
 
 ### 技术特性
 
@@ -53,6 +56,8 @@
 | **UI 组件库** | Naive UI 2 (深色主题) |
 | **HTTP 客户端** | Axios |
 | **包管理** | uv (后端) + npm (前端) |
+| **文件解析** | python-docx / openpyxl / pdfplumber |
+| **RSS 解析** | feedparser |
 
 ## 环境要求
 
@@ -198,6 +203,22 @@ cd frontend && npm run dev
 | GET | `/api/v1/export/digests` | 导出知识卡片（Markdown/JSON/CSV） |
 | GET | `/api/v1/export/actions` | 导出行动项（CSV/JSON） |
 
+### RSS 订阅
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/api/v1/rss` | RSS 订阅列表 |
+| POST | `/api/v1/rss` | 添加 RSS 订阅 |
+| PUT | `/api/v1/rss/{id}` | 更新 RSS 订阅配置 |
+| DELETE | `/api/v1/rss/{id}` | 删除 RSS 订阅 |
+| POST | `/api/v1/rss/{id}/fetch` | 手动触发立即抓取 |
+
+### Webhook
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| POST | `/api/v1/webhook/feishu` | 飞书机器人消息回调 |
+
 ### 系统
 
 | 方法 | 路径 | 说明 |
@@ -293,7 +314,9 @@ Info-Butler/
 │   │   ├── digest.py      #   信息录入 & 知识卡片
 │   │   ├── actions.py     #   行动项 CRUD
 │   │   ├── tags.py        #   标签管理
-│   │   └── review.py      #   复盘统计
+│   │   ├── review.py      #   复盘统计
+│   │   ├── rss.py         #   RSS 订阅管理
+│   │   └── webhook.py     #   飞书 Webhook 回调
 │   ├── clients/           # 外部服务客户端
 │   │   ├── dify_client.py #   Dify AI 调用（含重试）
 │   │   ├── scraper_client.py  # URL 内容抓取
@@ -321,6 +344,7 @@ Info-Butler/
 │   │   │   ├── DigestNew.vue   # 信息录入
 │   │   │   ├── DigestList.vue  # 知识卡片列表
 │   │   │   ├── Actions.vue     # 行动项看板
+│   │   │   ├── RSSManage.vue   # RSS 订阅管理
 │   │   │   └── Review.vue      # 周报复盘
 │   │   └── App.vue        # 根组件（Naive UI Provider）
 │   └── vite.config.ts     # Vite 配置（代理 + 组件自动导入）
@@ -364,6 +388,10 @@ cd frontend && npx vue-tsc --noEmit # 类型检查
   - ✅ 5.8 信息详情页增强（关联推荐）
   - ✅ 5.9 单元测试与集成测试完善（24 个测试通过）
   - ✅ 5.10 API 限流与安全加固（密码校验/Token黑名单/CORS/安全头）
+- [x] Phase 6: 多渠道输入 & 飞书双向集成（3/3 完成）✅ 全部完成
+  - ✅ 6.1 文件上传解析（PDF/Word/Excel/TXT/Markdown）
+  - ✅ 6.2 RSS 订阅自动抓取（订阅管理 + 自动解析）
+  - ✅ 6.3 飞书双向集成（Webhook 回调 + 自动处理）
 
 详细进度见 [tasks.md](./tasks.md)
 

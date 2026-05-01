@@ -71,6 +71,8 @@ async def process_digest_sync(
             raw_info.dify_raw_response = dify_result
             raw_info.error_msg = "Dify response validation failed"
             await db.commit()
+            await db.delete(raw_info)
+            await db.commit()
             return
 
         raw_info.summary = validated.summary
@@ -122,32 +124,14 @@ async def process_digest_sync(
 
     except ValueError as e:
         await db.rollback()
-        await db.refresh(raw_info)
-        raw_info.status = "failed"
-        raw_info.error_msg = str(e)
+        await db.delete(raw_info)
         await db.commit()
         logger.error(f"Dify call failed for task {raw_info.task_id}: {e}")
-        await feishu_client.send_digest_summary(
-            title=raw_info.title or "",
-            summary="",
-            tags=[],
-            action_items=[],
-            status="failed",
-        )
     except Exception as e:
         await db.rollback()
-        await db.refresh(raw_info)
-        raw_info.status = "failed"
-        raw_info.error_msg = f"Unexpected error: {e}"
+        await db.delete(raw_info)
         await db.commit()
         logger.error(f"Unexpected error processing task {raw_info.task_id}: {e}")
-        await feishu_client.send_digest_summary(
-            title=raw_info.title or "",
-            summary="",
-            tags=[],
-            action_items=[],
-            status="failed",
-        )
 
 
 async def get_digest_by_task_id(db: AsyncSession, task_id: str, user_id: int | None = None) -> RawInfo | None:

@@ -111,7 +111,7 @@ const registerRules = {
   ],
   password: [
     { required: true, message: '请输入密码', trigger: 'blur' },
-    { min: 6, max: 128, message: '至少6位', trigger: 'blur' },
+    { min: 8, max: 128, message: '至少8位，需包含大小写字母和数字', trigger: 'blur' },
   ],
 }
 
@@ -136,7 +136,14 @@ async function handleLogin() {
     message.success(`欢迎回来，${res.user.username}`)
     router.push('/digest/new')
   } catch (e: any) {
-    errorMsg.value = e.message || e.response?.data?.detail || '登录失败'
+    const detail = e.response?.data?.detail
+    if (Array.isArray(detail)) {
+      errorMsg.value = detail.map((d: any) => d.msg || d).join('；')
+    } else if (typeof detail === 'string') {
+      errorMsg.value = detail
+    } else {
+      errorMsg.value = e.message || '登录失败'
+    }
   } finally {
     loading.value = false
   }
@@ -163,7 +170,14 @@ async function handleRegister() {
     loginForm.username = registerForm.username
     loginForm.password = ''
   } catch (e: any) {
-    errorMsg.value = e.message || e.response?.data?.detail || '注册失败'
+    const detail = e.response?.data?.detail
+    if (Array.isArray(detail)) {
+      errorMsg.value = detail.map((d: any) => d.msg || d).join('；')
+    } else if (typeof detail === 'string') {
+      errorMsg.value = detail
+    } else {
+      errorMsg.value = e.message || '注册失败'
+    }
   } finally {
     loading.value = false
   }

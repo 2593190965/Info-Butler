@@ -51,6 +51,7 @@ import {
   CheckboxOutline,
   StatsChartOutline,
   PricetagsOutline,
+  LogoRss,
 } from '@vicons/ionicons5'
 import api from '@/api'
 
@@ -105,6 +106,11 @@ const menuOptions: MenuOption[] = [
     label: '标签管理',
     key: '/tags',
     icon: renderIcon(PricetagsOutline),
+  },
+  {
+    label: 'RSS 订阅',
+    key: '/rss',
+    icon: renderIcon(LogoRss),
   },
   {
     label: '周报复盘',

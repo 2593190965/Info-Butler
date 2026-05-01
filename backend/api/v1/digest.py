@@ -1,6 +1,6 @@
 import re
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.api.deps import get_current_user_id
@@ -25,6 +25,7 @@ from backend.services.digest_service import (
     list_digests,
     process_digest_sync,
 )
+from backend.services.file_parser import FileParser, FileParserError
 from backend.workers.arq_client import enqueue_digest
 
 router = APIRouter()
@@ -236,3 +237,43 @@ async def batch_add_tags_endpoint(
     """批量为知识卡片添加标签"""
     count = await batch_add_tags(db, uid, body.ids, body.tag_ids)
     return {"updated_count": count}
+
+
+@router.post("/upload", status_code=202, response_model=DigestAccepted)
+async def upload_file(
+    file: UploadFile = File(...),
+    generate_actions: bool = True,
+    generate_tags: bool = True,
+    db: AsyncSession = Depends(get_db),
+    uid: int = Depends(get_current_user_id),
+):
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="文件名不能为空")
+
+    try:
+        file_content = await file.read()
+        parsed = FileParser.parse(file_content, file.filename)
+    except FileParserError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    raw_info = await create_raw_info(
+        db=db,
+        source_type=parsed["source_type"],
+        content=parsed["content"],
+        user_id=uid,
+        title=parsed["title"],
+    )
+
+    if settings.app_env == "production":
+        await enqueue_digest(
+            raw_info.task_id,
+            generate_actions=generate_actions,
+            generate_tags=generate_tags,
+        )
+    else:
+        try:
+            await process_digest_sync(db, raw_info, generate_actions=generate_actions, generate_tags=generate_tags)
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Processing failed: {e}")
+
+    return DigestAccepted(task_id=raw_info.task_id, status="processing")

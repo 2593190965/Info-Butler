@@ -44,6 +44,11 @@ const router = createRouter({
       name: 'Review',
       component: () => import('@/views/Review.vue'),
     },
+    {
+      path: '/rss',
+      name: 'RSS',
+      component: () => import('@/views/RSSManage.vue'),
+    },
   ],
 })
 

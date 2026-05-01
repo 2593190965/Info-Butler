@@ -864,3 +864,234 @@ tests/
 ├── test_export.py             # 5.6 导出测试
 └── test_review_service.py     # 5.6 统计测试
 ```
+
+---
+
+# Phase 6：多渠道输入 & 用户体系增强 & 飞书双向集成
+
+> 开始日期：2026-04-27 | 目标：扩展输入渠道 + 完善用户权限 + 飞书深度集成
+
+---
+
+## 任务清单（规划中）
+
+### 6.1 文件上传解析（PDF/Word/Excel/TXT）
+- [x] **已完成** 2026-04-27
+- **新增文件：**
+  - `backend/services/file_parser.py` — 文件解析服务（PDF/Word/Excel/TXT/MD）
+  - `backend/api/v1/digest.py` — 新增 `/upload` 端点
+  - `frontend/src/views/DigestNew.vue` — 增加文件上传 Tab（拖拽上传 + 进度条）
+- **新增依赖：** `python-docx`, `openpyxl`, `pdfplumber`, `python-multipart`
+- **功能：**
+  - 支持 PDF/Word/Excel/TXT/Markdown 文件上传
+  - 文件大小限制 10MB
+  - 自动触发 AI 处理流程
+  - 前端拖拽上传 + 文件信息展示
+
+### 6.2 RSS 订阅自动抓取
+- [x] **已完成** 2026-04-27
+- **新增文件：**
+  - `backend/models/rss_subscription.py` — RSS 订阅 ORM 模型
+  - `backend/services/rss_service.py` — RSS 解析服务（feedparser + 自动处理）
+  - `backend/api/v1/rss.py` — RSS 管理 API（CRUD + 手动抓取）
+  - `frontend/src/views/RSSManage.vue` — RSS 订阅管理页面
+- **修改文件：**
+  - `backend/models/__init__.py` — 注册 RssSubscription 模型
+  - `backend/api/v1/router.py` — 注册 /rss 路由
+  - `frontend/src/router/index.ts` — 新增 /rss 路由
+  - `frontend/src/App.vue` — 侧边栏添加 RSS 入口
+- **新增依赖：** `feedparser`
+- **功能：**
+  - RSS 订阅 CRUD（名称/URL/抓取间隔）
+  - 手动触发立即抓取
+  - 自动解析 RSS/Atom 源并调用 AI 处理
+  - 前端网格布局展示 + 状态监控
+
+### 6.3 飞书双向集成（机器人接收 + 表格导出）
+- [x] **已完成** 2026-04-27
+- **新增文件：**
+  - `backend/api/v1/webhook.py` — 飞书 Webhook 回调接口
+- **修改文件：**
+  - `backend/api/v1/router.py` — 注册 /webhook 路由
+- **功能：**
+  - 接收飞书机器人消息（自动解析文本/URL）
+  - 自动触发 AI 处理流程
+  - 返回处理结果（摘要/行动项/标签）
+  - 支持飞书 challenge 验证
+
+### 6.4 用户角色权限体系
+- [ ] **待开始**
+- **目标：** 支持多用户场景，区分管理员和普通用户
+- **后端：**
+  - 扩展 User 模型：
+    - 新增 `role` 字段（admin / user / viewer）
+    - 新增 `is_superuser` 字段
+    - 新增 `last_login_at` 字段
+  - 权限控制：
+    - admin：管理所有用户、查看全局统计、系统配置
+    - user：管理自己的数据（卡片/行动项/标签）
+    - viewer：只读查看自己的数据
+  - 新增 API：
+    - `GET /api/v1/admin/users` — 用户列表（admin only）
+    - `PUT /api/v1/admin/users/{id}/role` — 修改用户角色（admin only）
+    - `GET /api/v1/admin/stats` — 全局统计（admin only）
+  - 权限中间件：
+    - `RequireRole("admin")` 装饰器
+    - 越权访问返回 403
+- **前端：**
+  - 新增「用户管理」页面（仅 admin 可见）
+  - 用户列表（用户名/邮箱/角色/注册时间/最后登录）
+  - 角色切换下拉菜单
+  - 侧边栏根据角色显示/隐藏菜单项
+
+### 6.5 用户数据共享与协作
+- [ ] **待开始**
+- **目标：** 支持用户间共享知识卡片和行动项
+- **后端：**
+  - 新增模型：
+    - `ShareRecord` — 分享记录（owner_id, shared_with_user_id, resource_type, resource_id, permission, created_at）
+  - 分享 API：
+    - `POST /api/v1/shares` — 分享资源给其他用户
+    - `GET /api/v1/shares` — 我收到的分享列表
+    - `GET /api/v1/shares/sent` — 我发出的分享列表
+    - `DELETE /api/v1/shares/{id}` — 取消分享
+  - 权限控制：
+    - read：只读查看
+    - edit：可编辑行动项状态
+  - 前端：
+    - 知识卡片详情页增加「分享」按钮
+    - 行动项卡片增加「分享」按钮
+    - 「收到的分享」独立页面
+    - 分享内容标记来源（「来自 XXX 的分享」）
+
+### 6.6 用户偏好设置
+- [ ] **待开始**
+- **目标：** 支持用户自定义系统行为
+- **后端：**
+  - 新增模型：
+    - `UserPreference` — 用户偏好（user_id, theme, notification_enabled, default_priority, auto_generate_actions, created_at, updated_at）
+  - 偏好 API：
+    - `GET /api/v1/preferences` — 获取当前用户偏好
+    - `PUT /api/v1/preferences` — 更新偏好
+  - 偏好项：
+    - 主题（light/dark/system）
+    - 飞书通知开关
+    - 默认行动项优先级
+    - 是否自动生成行动项
+    - 每页显示条数
+- **前端：**
+  - 新增「设置」页面
+  - 偏好表单（开关/下拉/单选）
+  - 实时保存（防抖）
+
+### 6.7 批量导入增强（CSV/Excel）
+- [ ] **待开始**
+- **目标：** 支持从外部数据源批量导入知识卡片
+- **后端：**
+  - `POST /api/v1/import/digests` — 导入知识卡片
+  - 支持格式：CSV / Excel(.xlsx)
+  - CSV 列映射：
+    - 必填：content（内容）
+    - 可选：title, source_url, tags（逗号分隔）, status
+  - 导入结果：
+    - 返回成功数/失败数/失败原因
+    - 失败行详细报告
+  - 异步处理（大文件走 ARQ 队列）
+- **前端：**
+  - 知识卡片列表页增加「导入」按钮
+  - 上传 CSV/Excel 文件
+  - 列映射配置界面
+  - 导入进度和结果展示
+
+### 6.8 数据备份与恢复
+- [ ] **待开始**
+- **目标：** 支持用户导出/导入完整数据备份
+- **后端：**
+  - `POST /api/v1/backup/export` — 导出完整数据（JSON）
+    - 包含：raw_infos + action_items + tags + relationships
+    - 按用户隔离
+  - `POST /api/v1/backup/import` — 导入数据备份
+    - 校验 JSON 格式
+    - 幂等导入（基于 source_url 去重）
+  - 前端：
+    - 设置页面增加「数据备份」区域
+    - 一键导出/导入按钮
+
+---
+
+## Phase 6 进度总览
+
+| 已完成 | 进行中 | 待开始 |
+|--------|--------|--------|
+| 0      | 0      | 8      |
+
+## 优先级排序
+
+| 优先级 | 任务 | 理由 |
+|--------|------|------|
+| 🔴 P0 | 6.1 文件上传解析 | 高频需求，替代手动复制粘贴 |
+| 🔴 P0 | 6.3 飞书双向集成 | 核心差异化功能，输入输出双通道 |
+| 🔴 P0 | 6.2 RSS 订阅自动抓取 | 自动化信息输入，产品粘性提升 |
+| 🟡 P1 | 6.4 用户角色权限 | 多用户场景基础 |
+| 🟡 P1 | 6.6 用户偏好设置 | 个性化体验 |
+| 🟢 P2 | 6.5 数据共享协作 | 锦上添花 |
+| 🟢 P2 | 6.7 批量导入增强 | 外部数据迁移需求 |
+| 🟢 P2 | 6.8 数据备份恢复 | 数据安全兜底 |
+
+## 预计新增/修改文件
+
+```
+backend/
+├── api/v1/
+│   ├── rss.py                 # 6.2 RSS 管理 API
+│   ├── webhook.py             # 6.3 飞书 Webhook 回调
+│   ├── admin.py               # 6.4 管理员 API
+│   ├── shares.py              # 6.5 分享 API
+│   ├── preferences.py         # 6.6 偏好设置 API
+│   ├── import_data.py         # 6.7 批量导入 API
+│   └── backup.py              # 6.8 备份 API
+├── clients/
+│   └── feishu_client.py       # 6.3 扩展飞书表格 API
+├── services/
+│   ├── file_parser.py         # 6.1 文件解析服务
+│   ├── rss_service.py         # 6.2 RSS 解析服务
+│   ├── share_service.py       # 6.5 分享逻辑
+│   ├── import_service.py      # 6.7 导入逻辑
+│   └── backup_service.py      # 6.8 备份逻辑
+├── models/
+│   ├── rss_subscription.py    # 6.2 RSS 订阅模型
+│   ├── share_record.py        # 6.5 分享记录模型
+│   └── user_preference.py     # 6.6 用户偏好模型
+├── schemas/
+│   ├── rss.py                 # 6.2 RSS Schema
+│   ├── share.py               # 6.5 分享 Schema
+│   └── preference.py          # 6.6 偏好 Schema
+└── workers/
+    └── tasks.py               # 6.2 RSS 定时任务
+├── core/
+│   └── permissions.py         # 6.4 权限中间件
+frontend/
+├── src/views/
+│   ├── RSSManage.vue          # 6.2 RSS 管理页面
+│   ├── UserManagement.vue     # 6.4 用户管理页面
+│   ├── Settings.vue           # 6.6 设置页面
+│   └── SharedWithMe.vue       # 6.5 收到的分享页面
+├── src/components/
+│   └── FileUpload.vue         # 6.1 文件上传组件
+└── src/api/
+    └── index.ts               # 扩展 API 接口
+```
+
+## 新增依赖
+
+```toml
+# pyproject.toml
+[project]
+dependencies = [
+    # ... 现有依赖
+    "python-docx>=1.1.0",      # 6.1 Word 解析
+    "openpyxl>=3.1.0",         # 6.1 Excel 解析
+    "pdfplumber>=0.10.0",      # 6.1 PDF 解析
+    "feedparser>=6.0.0",       # 6.2 RSS 解析
+]
+```

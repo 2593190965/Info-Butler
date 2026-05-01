@@ -134,12 +134,12 @@ async function handleExport(key: string) {
     if (statusFilter.value) params.status = statusFilter.value
     if (tagFilter.value) params.tags = tagFilter.value
 
-    const res = await api.get('/export/digests', {
+    const res: any = await api.get('/export/digests', {
       params,
       responseType: 'blob',
     })
 
-    const blob = new Blob([res])
+    const blob = new Blob([res as BlobPart])
     const url = window.URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
