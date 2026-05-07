@@ -136,14 +136,7 @@ async function handleLogin() {
     message.success(`欢迎回来，${res.user.username}`)
     router.push('/digest/new')
   } catch (e: any) {
-    const detail = e.response?.data?.detail
-    if (Array.isArray(detail)) {
-      errorMsg.value = detail.map((d: any) => d.msg || d).join('；')
-    } else if (typeof detail === 'string') {
-      errorMsg.value = detail
-    } else {
-      errorMsg.value = e.message || '登录失败'
-    }
+    errorMsg.value = formatError(e)
   } finally {
     loading.value = false
   }
@@ -170,17 +163,28 @@ async function handleRegister() {
     loginForm.username = registerForm.username
     loginForm.password = ''
   } catch (e: any) {
-    const detail = e.response?.data?.detail
-    if (Array.isArray(detail)) {
-      errorMsg.value = detail.map((d: any) => d.msg || d).join('；')
-    } else if (typeof detail === 'string') {
-      errorMsg.value = detail
-    } else {
-      errorMsg.value = e.message || '注册失败'
-    }
+    errorMsg.value = formatError(e)
   } finally {
     loading.value = false
   }
+}
+
+function formatError(e: any): string {
+  const detail = e.response?.data?.detail
+  if (Array.isArray(detail)) {
+    // Pydantic validation errors
+    return detail
+      .map((d: any) => {
+        if (typeof d === 'string') return d
+        if (d.msg) return d.msg
+        if (d.message) return d.message
+        return '验证失败'
+      })
+      .filter(Boolean)
+      .join('；')
+  }
+  if (typeof detail === 'string') return detail
+  return e.message || '操作失败'
 }
 </script>
 

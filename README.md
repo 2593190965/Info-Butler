@@ -59,6 +59,25 @@
 | **文件解析** | python-docx / openpyxl / pdfplumber |
 | **RSS 解析** | feedparser |
 
+## 🚀 快速启动
+
+**一键启动前后端：**
+
+```bash
+# Windows 用户 - 双击运行
+start.bat
+
+# 或使用 npm
+npm run dev
+
+# 或使用 make
+make dev
+```
+
+📖 详细启动方式请查看 [QUICKSTART.md](./QUICKSTART.md)
+
+---
+
 ## 环境要求
 
 - Python 3.12+
