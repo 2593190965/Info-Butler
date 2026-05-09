@@ -61,10 +61,13 @@
 
 ## 🚀 快速启动
 
-**一键启动前后端：**
+**一键启动前后端（推荐 PowerShell）：**
 
-```bash
-# Windows 用户 - 双击运行
+```powershell
+# Windows PowerShell（推荐）
+.\start.ps1
+
+# Windows 批处理
 start.bat
 
 # 或使用 npm
@@ -75,6 +78,15 @@ make dev
 ```
 
 📖 详细启动方式请查看 [QUICKSTART.md](./QUICKSTART.md)
+
+**停止服务：**
+```powershell
+# PowerShell
+.\stop.ps1
+
+# 批处理
+stop.bat
+```
 
 ---
 

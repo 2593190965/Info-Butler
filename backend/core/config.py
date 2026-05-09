@@ -7,6 +7,7 @@ class Settings(BaseSettings):
     app_name: str = "Info-Butler"
     app_env: str = "development"
     debug: bool = True
+    log_level: str = "INFO"  # DEBUG, INFO, WARNING, ERROR, CRITICAL
     api_key: str = "dev-api-key-2026"
     api_key_user_id: int = 1
     jwt_secret: str = "info-butler-jwt-secret-key-change-in-production-2026"

@@ -139,19 +139,22 @@ async def fetch_and_process(
 
     for article in articles:
         try:
-            from backend.services.digest_service import create_raw_info, process_digest_sync
+            from backend.services.digest_service import create_raw_info
+            import logging
 
+            # Create raw info record
             raw_info = await create_raw_info(
                 db=db,
                 source_type="url",
                 content=article["url"] if article["url"] else article["content"],
-                user_id=sub.user_id,
+                user_id=int(sub.user_id),
                 title=article["title"] or sub.name,
             )
-            await process_digest_sync(db, raw_info)
+
+            logging.info(f"Created raw info {raw_info.task_id} for article: {article['title']}")
             new_count += 1
         except Exception as e:
-            logger.error(f"Failed to process article {article['title']}: {e}")
+            logger.error(f"Failed to process article {article['title']}: {e}", exc_info=True)
             error_count += 1
 
     await db.commit()

@@ -49,10 +49,13 @@ async def get_action_by_id(db: AsyncSession, action_id: int, user_id: int) -> Ac
 async def update_action(
     db: AsyncSession,
     action_item: ActionItem,
+    content: str | None = None,
     status: str | None = None,
     priority: str | None = None,
     due_date: str | None = None,
 ) -> ActionItem:
+    if content is not None:
+        action_item.content = content
     if status is not None:
         action_item.status = status
     if priority is not None:

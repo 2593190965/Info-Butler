@@ -132,5 +132,5 @@ async def fetch_rss(
     if not sub:
         raise HTTPException(status_code=404, detail="RSS subscription not found")
 
-    fetch_result = await rss_service.fetch_and_process(db, sub, None)
+    fetch_result = await rss_service.fetch_and_process(db, sub)
     return fetch_result

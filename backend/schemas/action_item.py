@@ -8,6 +8,7 @@ class ActionItemCreate(BaseModel):
 
 
 class ActionItemUpdate(BaseModel):
+    content: str | None = Field(None, min_length=2, max_length=500)
     status: str | None = Field(None, pattern="^(pending|done|ignored)$")
     priority: str | None = Field(None, pattern="^(high|medium|low)$")
     due_date: str | None = None

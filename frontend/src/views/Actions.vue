@@ -51,6 +51,9 @@
                   {{ item.priority }}
                 </n-tag>
                 <n-space v-if="!batchMode">
+                  <n-button size="tiny" type="primary" @click="openEditModal(item)">
+                    编辑
+                  </n-button>
                   <n-button v-if="col.key !== 'done'" size="tiny" type="success" @click="updateStatus(item.id, 'done')">
                     完成
                   </n-button>
@@ -82,6 +85,25 @@
         <n-button type="primary" @click="handleBatchAddTags">确定</n-button>
       </template>
     </n-modal>
+
+    <!-- 编辑行动项弹窗 -->
+    <n-modal v-model:show="showEditModal" preset="dialog" title="编辑行动项">
+      <n-space vertical>
+        <n-form-item label="内容">
+          <n-input v-model:value="editForm.content" type="textarea" placeholder="行动项内容" :rows="3" />
+        </n-form-item>
+        <n-form-item label="优先级">
+          <n-select v-model:value="editForm.priority" :options="priorityOptions" placeholder="选择优先级" />
+        </n-form-item>
+        <n-form-item label="截止日期">
+          <n-date-picker v-model:value="editForm.dueDateTimestamp" type="date" clearable />
+        </n-form-item>
+      </n-space>
+      <template #action>
+        <n-button @click="showEditModal = false">取消</n-button>
+        <n-button type="primary" @click="handleEdit">保存</n-button>
+      </template>
+    </n-modal>
   </div>
 </template>
 
@@ -102,6 +124,15 @@ const selectedIds = ref(new Set<number>())
 const showAddTagsModal = ref(false)
 const selectedTagIds = ref<number[]>([])
 const allTags = ref<any[]>([])
+
+// 编辑功能
+const showEditModal = ref(false)
+const editForm = ref({
+  id: 0,
+  content: '',
+  priority: 'medium',
+  dueDateTimestamp: null as number | null,
+})
 
 const columns = [
   { key: 'pending', label: '待办', color: '#f9e2af' },
@@ -284,6 +315,40 @@ async function handleBatchAddTags() {
     await fetchData()
   } catch (e: any) {
     message.error(e.response?.data?.message || '添加标签失败')
+  }
+}
+
+function openEditModal(item: any) {
+  editForm.value = {
+    id: item.id,
+    content: item.content,
+    priority: item.priority,
+    dueDateTimestamp: item.due_date ? new Date(item.due_date).getTime() : null,
+  }
+  showEditModal.value = true
+}
+
+async function handleEdit() {
+  if (!editForm.value.content.trim()) {
+    message.error('内容不能为空')
+    return
+  }
+  try {
+    const updateData: any = {
+      content: editForm.value.content,
+      priority: editForm.value.priority,
+    }
+    if (editForm.value.dueDateTimestamp) {
+      const date = new Date(editForm.value.dueDateTimestamp)
+      updateData.due_date = date.toISOString().split('T')[0]
+    }
+
+    await api.patch(`/actions/${editForm.value.id}`, updateData)
+    message.success('已更新')
+    showEditModal.value = false
+    await fetchData()
+  } catch (e: any) {
+    message.error(e.response?.data?.message || '更新失败')
   }
 }
 

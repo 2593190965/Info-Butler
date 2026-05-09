@@ -93,6 +93,7 @@ async def update_action_item(
     updated = await update_action(
         db=db,
         action_item=action_item,
+        content=body.content,
         status=body.status,
         priority=body.priority,
         due_date=body.due_date,

@@ -19,6 +19,19 @@ from backend.core.database import engine
 from backend.core.exceptions import AppError
 from backend.core.middleware import RateLimitMiddleware, SecurityHeadersMiddleware
 
+# Configure logging
+logging.basicConfig(
+    level=getattr(logging, settings.log_level.upper()),
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
+
+# Reduce SQLAlchemy engine logs (only show warnings and errors)
+logging.getLogger("sqlalchemy.engine.Engine").setLevel(logging.WARNING)
+
+# Reduce other verbose logs
+logging.getLogger("uvicorn.access").setLevel(logging.INFO)
+
 logger = logging.getLogger(__name__)
 
 
