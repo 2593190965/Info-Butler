@@ -30,6 +30,11 @@ class Settings(BaseSettings):
     dify_workflow_id: str = ""
 
     feishu_webhook_url: str = ""
+    feishu_app_id: str = ""
+    feishu_app_secret: str = ""
+    feishu_encrypt_key: str = ""
+    feishu_verification_token: str = ""
+    feishu_reminder_advance_days: int = 1  # 提前提醒天数
 
     rate_limit_requests: int = 100
     rate_limit_window: int = 60

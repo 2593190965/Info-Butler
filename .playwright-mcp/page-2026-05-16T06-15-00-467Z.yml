@@ -1,0 +1,115 @@
+- generic [ref=e3]:
+  - generic [ref=e4]:
+    - link "新闻" [ref=e5] [cursor=pointer]:
+      - /url: //news.baidu.com/
+    - link "hao123" [ref=e6] [cursor=pointer]:
+      - /url: //www.hao123.com/
+    - link "地图" [ref=e7] [cursor=pointer]:
+      - /url: //map.baidu.com/
+    - link "直播" [ref=e8] [cursor=pointer]:
+      - /url: //live.baidu.com/
+    - link "视频" [ref=e9] [cursor=pointer]:
+      - /url: //haokan.baidu.com/?sfrom=baidu-top
+    - link "贴吧" [ref=e10] [cursor=pointer]:
+      - /url: //tieba.baidu.com/
+    - link "学术" [ref=e11] [cursor=pointer]:
+      - /url: //xueshu.baidu.com/
+    - link "更多" [ref=e13] [cursor=pointer]:
+      - /url: //www.baidu.com/more/
+  - link "登录" [ref=e15] [cursor=pointer]:
+    - /url: //www.baidu.com/bdorz/login.gif?login&tpl=mn&u=http%3A%2F%2Fwww.baidu.com%2f%3fbdorz_come%3d1
+  - generic [ref=e17]:
+    - generic [ref=e18]:
+      - generic [ref=e19]:
+        - img [ref=e20]
+        - generic:
+          - link "点击一下，了解更多":
+            - /url: //www.baidu.com/s?wd=%E7%99%BE%E5%BA%A6%E7%83%AD%E6%90%9C&sa=ire_dl_gh_logo_texing&rsv_dl=igh_logo_pcs
+      - link:
+        - /url: //www.baidu.com/
+      - generic [ref=e21]:
+        - textbox [ref=e23]
+        - button "百度一下" [ref=e25] [cursor=pointer]
+    - generic [ref=e26]:
+      - generic [ref=e27]:
+        - link "百度热搜":
+          - /url: https://top.baidu.com/board?platform=pc&sa=pcindex_entry
+          - generic "百度热搜" [ref=e28] [cursor=pointer]:  
+      - list:
+        - listitem [ref=e29]:
+          - link " 总书记的一周" [ref=e30] [cursor=pointer]:
+            - /url: https://www.baidu.com/s?wd=%E6%80%BB%E4%B9%A6%E8%AE%B0%E7%9A%84%E4%B8%80%E5%91%A8&sa=ipc_home_hotword_jt&rsv_dl=ipc_home_hotword_jt&from=super&cl=3&tn=baidutop10&fr=top1000&rsv_idx=2&hisfilter=1
+            - generic [ref=e31]: 
+            - text: 总书记的一周
+        - listitem [ref=e32]:
+          - link "5 微信新功能上线 可一键删除单向好友" [ref=e33] [cursor=pointer]:
+            - /url: https://www.baidu.com/s?wd=%E5%BE%AE%E4%BF%A1%E6%96%B0%E5%8A%9F%E8%83%BD%E4%B8%8A%E7%BA%BF+%E5%8F%AF%E4%B8%80%E9%94%AE%E5%88%A0%E9%99%A4%E5%8D%95%E5%90%91%E5%A5%BD%E5%8F%8B&sa=ipc_home_hotword_jt&rsv_dl=ipc_home_hotword_jt&from=super&cl=3&tn=baidutop10&fr=top1000&rsv_idx=2&hisfilter=1
+            - generic [ref=e34]: "5"
+            - text: 微信新功能上线 可一键删除单向好友
+          - generic [ref=e35]: 热
+        - listitem [ref=e36]:
+          - link "1 习近平出席民营企业座谈会并讲话" [ref=e37] [cursor=pointer]:
+            - /url: https://www.baidu.com/s?wd=%E4%B9%A0%E8%BF%91%E5%B9%B3%E5%87%BA%E5%B8%AD%E6%B0%91%E8%90%A5%E4%BC%81%E4%B8%9A%E5%BA%A7%E8%B0%88%E4%BC%9A%E5%B9%B6%E8%AE%B2%E8%AF%9D&sa=ipc_home_hotword_jt&rsv_dl=ipc_home_hotword_jt&from=super&cl=3&tn=baidutop10&fr=top1000&rsv_idx=2&hisfilter=1
+            - generic [ref=e38]: "1"
+            - text: 习近平出席民营企业座谈会并讲话
+        - listitem [ref=e39]:
+          - link "6 这下遇到真石矶娘娘了" [ref=e40] [cursor=pointer]:
+            - /url: https://www.baidu.com/s?wd=%E8%BF%99%E4%B8%8B%E9%81%87%E5%88%B0%E7%9C%9F%E7%9F%B3%E7%9F%B6%E5%A8%98%E5%A8%98%E4%BA%86&sa=ipc_home_hotword_jt&rsv_dl=ipc_home_hotword_jt&from=super&cl=3&tn=baidutop10&fr=top1000&rsv_idx=2&hisfilter=1
+            - generic [ref=e41]: "6"
+            - text: 这下遇到真石矶娘娘了
+        - listitem [ref=e42]:
+          - link "2 《哪吒2》超《狮子王》进全球票房前10" [ref=e43] [cursor=pointer]:
+            - /url: https://www.baidu.com/s?wd=%E3%80%8A%E5%93%AA%E5%90%922%E3%80%8B%E8%B6%85%E3%80%8A%E7%8B%AE%E5%AD%90%E7%8E%8B%E3%80%8B%E8%BF%9B%E5%85%A8%E7%90%83%E7%A5%A8%E6%88%BF%E5%89%8D10&sa=ipc_home_hotword_jt&rsv_dl=ipc_home_hotword_jt&from=super&cl=3&tn=baidutop10&fr=top1000&rsv_idx=2&hisfilter=1
+            - generic [ref=e44]: "2"
+            - text: 《哪吒2》超《狮子王》进全球票房前10
+          - generic [ref=e45]: 热
+        - listitem [ref=e46]:
+          - link "7 于正发长文致歉" [ref=e47] [cursor=pointer]:
+            - /url: https://www.baidu.com/s?wd=%E4%BA%8E%E6%AD%A3%E5%8F%91%E9%95%BF%E6%96%87%E8%87%B4%E6%AD%89&sa=ipc_home_hotword_jt&rsv_dl=ipc_home_hotword_jt&from=super&cl=3&tn=baidutop10&fr=top1000&rsv_idx=2&hisfilter=1
+            - generic [ref=e48]: "7"
+            - text: 于正发长文致歉
+        - listitem [ref=e49]:
+          - link "3 “村超”持续助推乡村振兴" [ref=e50] [cursor=pointer]:
+            - /url: https://www.baidu.com/s?wd=%E2%80%9C%E6%9D%91%E8%B6%85%E2%80%9D%E6%8C%81%E7%BB%AD%E5%8A%A9%E6%8E%A8%E4%B9%A1%E6%9D%91%E6%8C%AF%E5%85%B4&sa=ipc_home_hotword_jt&rsv_dl=ipc_home_hotword_jt&from=super&cl=3&tn=baidutop10&fr=top1000&rsv_idx=2&hisfilter=1
+            - generic [ref=e51]: "3"
+            - text: “村超”持续助推乡村振兴
+        - listitem [ref=e52]:
+          - link "8 尼格买提：别找了结界兽在禾木" [ref=e53] [cursor=pointer]:
+            - /url: https://www.baidu.com/s?wd=%E5%B0%BC%E6%A0%BC%E4%B9%B0%E6%8F%90%EF%BC%9A%E5%88%AB%E6%89%BE%E4%BA%86%E7%BB%93%E7%95%8C%E5%85%BD%E5%9C%A8%E7%A6%BE%E6%9C%A8&sa=ipc_home_hotword_jt&rsv_dl=ipc_home_hotword_jt&from=super&cl=3&tn=baidutop10&fr=top1000&rsv_idx=2&hisfilter=1
+            - generic [ref=e54]: "8"
+            - text: 尼格买提：别找了结界兽在禾木
+        - listitem [ref=e55]:
+          - link "4 《哪吒2》总票房突破120亿" [ref=e56] [cursor=pointer]:
+            - /url: https://www.baidu.com/s?wd=%E3%80%8A%E5%93%AA%E5%90%922%E3%80%8B%E6%80%BB%E7%A5%A8%E6%88%BF%E7%AA%81%E7%A0%B4120%E4%BA%BF&sa=ipc_home_hotword_jt&rsv_dl=ipc_home_hotword_jt&from=super&cl=3&tn=baidutop10&fr=top1000&rsv_idx=2&hisfilter=1
+            - generic [ref=e57]: "4"
+            - text: 《哪吒2》总票房突破120亿
+          - generic [ref=e58]: 热
+        - listitem [ref=e59]:
+          - link "9 大学生60米栏跑出7.53酷似刘翔" [ref=e60] [cursor=pointer]:
+            - /url: https://www.baidu.com/s?wd=%E5%A4%A7%E5%AD%A6%E7%94%9F60%E7%B1%B3%E6%A0%8F%E8%B7%91%E5%87%BA7.53%E9%85%B7%E4%BC%BC%E5%88%98%E7%BF%94&sa=ipc_home_hotword_jt&rsv_dl=ipc_home_hotword_jt&from=super&cl=3&tn=baidutop10&fr=top1000&rsv_idx=2&hisfilter=1
+            - generic [ref=e61]: "9"
+            - text: 大学生60米栏跑出7.53酷似刘翔
+  - generic [ref=e63]:
+    - paragraph [ref=e64]:
+      - link "关于百度" [ref=e65] [cursor=pointer]:
+        - /url: //home.baidu.com/
+    - paragraph [ref=e66]:
+      - link "About Baidu" [ref=e67] [cursor=pointer]:
+        - /url: //ir.baidu.com/
+    - paragraph [ref=e68]:
+      - link "使用百度前必读" [ref=e69] [cursor=pointer]:
+        - /url: //www.baidu.com/duty
+    - paragraph [ref=e70]:
+      - link "帮助中心" [ref=e71] [cursor=pointer]:
+        - /url: //help.baidu.com/
+    - paragraph [ref=e72]:
+      - link "京公网安备11000002000001号" [ref=e73] [cursor=pointer]:
+        - /url: //www.beian.gov.cn/portal/registerSystemInfo?recordcode=11000002000001
+    - paragraph [ref=e74]:
+      - link "京ICP证030173号" [ref=e75] [cursor=pointer]:
+        - /url: //beian.miit.gov.cn/
+    - paragraph [ref=e76]: ©2026 Baidu
+    - paragraph [ref=e77]: 互联网药品信息服务资格证书 (京)-经营性-2017-0020
+    - paragraph [ref=e78]:
+      - link "信息网络传播视听节目许可证 0110516" [ref=e79] [cursor=pointer]:
+        - /url: //www.baidu.com/licence/

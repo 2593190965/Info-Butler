@@ -1,5 +1,5 @@
 import logging
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 
 from sqlalchemy import func, select, update
 from sqlalchemy.dialects.mysql import insert as mysql_insert
@@ -14,6 +14,28 @@ from backend.models.raw_info import RawInfo
 from backend.models.tag import Tag, action_tags_table, info_tags_table
 
 logger = logging.getLogger(__name__)
+
+
+def _parse_due_date(due_str: str | None) -> date | None:
+    """从 due_date 字符串解析日期部分"""
+    if not due_str:
+        return None
+    for fmt in ("%Y-%m-%d %H:%M", "%Y-%m-%d"):
+        try:
+            return datetime.strptime(due_str.strip(), fmt).date()
+        except ValueError:
+            continue
+    return None
+
+
+def _parse_due_datetime(due_str: str | None) -> datetime | None:
+    """从 due_date 字符串解析完整时间（带时分），用于精确提醒"""
+    if not due_str:
+        return None
+    try:
+        return datetime.strptime(due_str.strip(), "%Y-%m-%d %H:%M").replace(tzinfo=None)
+    except ValueError:
+        return None
 
 
 async def create_raw_info(
@@ -41,6 +63,7 @@ async def process_digest_sync(
     raw_info: RawInfo,
     generate_actions: bool = True,
     generate_tags: bool = True,
+    skip_feishu_notification: bool = False,
 ) -> None:
     text = raw_info.raw_text
     uid = raw_info.user_id
@@ -96,11 +119,15 @@ async def process_digest_sync(
 
         if generate_actions and validated.action_items:
             for action_data in validated.action_items:
+                due_date_val = _parse_due_date(action_data.due_date)
+                due_datetime_val = _parse_due_datetime(action_data.due_date)
                 action_item = ActionItem(
                     user_id=uid,
                     info_id=raw_info.id,
                     content=action_data.content,
                     priority=action_data.priority,
+                    due_date=due_date_val,
+                    due_datetime=due_datetime_val,
                     status="pending",
                 )
                 db.add(action_item)
@@ -114,13 +141,22 @@ async def process_digest_sync(
         action_items_list = [{"content": a.content, "priority": a.priority} for a in validated.action_items]
         tag_names = validated.tags
 
-        await feishu_client.send_digest_summary(
-            title=raw_info.title or "",
-            summary=validated.summary,
-            tags=tag_names,
-            action_items=action_items_list,
-            status="done",
-        )
+        # 查询用户的飞书 open_id，用于推送通知
+        if not skip_feishu_notification:
+            from backend.models.user import User
+
+            user_result = await db.execute(select(User).where(User.id == uid))
+            user = user_result.scalar_one_or_none()
+            open_id = user.feishu_open_id if user else None
+
+            await feishu_client.send_digest_summary(
+                title=raw_info.title or "",
+                summary=validated.summary,
+                tags=tag_names,
+                action_items=action_items_list,
+                status="done",
+                open_id=open_id,
+            )
 
     except ValueError as e:
         await db.rollback()

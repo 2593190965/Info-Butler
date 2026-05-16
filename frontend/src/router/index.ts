@@ -49,6 +49,11 @@ const router = createRouter({
       name: 'RSS',
       component: () => import('@/views/RSSManage.vue'),
     },
+    {
+      path: '/settings',
+      name: 'Settings',
+      component: () => import('@/views/Settings.vue'),
+    },
   ],
 })
 

@@ -6,13 +6,13 @@
 # 开发环境启动（前后端）
 dev:
 	@echo "🚀 启动开发环境..."
-	@uv run uvicorn backend.main:app --host 0.0.0.0 --port 8001 --reload &
+	@uv run uvicorn backend.main:app --host 0.0.0.0 --port 9001 --reload &
 	@cd frontend && npm run dev
 
 # 仅启动后端
 backend:
 	@echo "🔧 启动后端..."
-	@uv run uvicorn backend.main:app --host 0.0.0.0 --port 8001 --reload
+	@uv run uvicorn backend.main:app --host 0.0.0.0 --port 9001 --reload
 
 # 仅启动前端
 frontend:
@@ -69,5 +69,5 @@ help:
 	@echo ""
 	@echo "访问地址:"
 	@echo "  前端: http://localhost:5175"
-	@echo "  后端: http://localhost:8001"
-	@echo "  API文档: http://localhost:8001/docs"
+	@echo "  后端: http://localhost:9001"
+	@echo "  API文档: http://localhost:9001/docs"

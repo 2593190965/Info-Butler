@@ -4,6 +4,7 @@ from backend.api.v1.actions import router as actions_router
 from backend.api.v1.auth import router as auth_router
 from backend.api.v1.digest import router as digest_router
 from backend.api.v1.export import router as export_router
+from backend.api.v1.feishu_binding import router as feishu_binding_router
 from backend.api.v1.reminders import router as reminders_router
 from backend.api.v1.review import router as review_router
 from backend.api.v1.rss import router as rss_router
@@ -22,3 +23,4 @@ api_router.include_router(export_router, prefix="/export", tags=["Export"])
 api_router.include_router(reminders_router, prefix="/reminders", tags=["Reminders"])
 api_router.include_router(rss_router, prefix="/rss", tags=["RSS"])
 api_router.include_router(webhook_router, prefix="/webhook", tags=["Webhook"])
+api_router.include_router(feishu_binding_router, prefix="/feishu", tags=["Feishu Binding"])

@@ -20,7 +20,7 @@ cd /d "%ROOT_DIR%"
 
 :: Start backend
 echo [1/2] Starting backend...
-start "Info-Butler-Backend" cmd /k "cd /d %ROOT_DIR% && uv run uvicorn backend.main:app --host 0.0.0.0 --port 8001 --reload"
+start "Info-Butler-Backend" cmd /k "cd /d %ROOT_DIR% && uv run uvicorn backend.main:app --host 0.0.0.0 --port 9001 --reload"
 
 :: Wait for backend to start
 timeout /t 3 /nobreak >nul 2>&1
@@ -37,9 +37,9 @@ echo.
 echo ====================================
 echo   Services Started!
 echo ====================================
-echo   Backend:  http://localhost:8001
+echo   Backend:  http://localhost:9001
 echo   Frontend: http://localhost:5175
-echo   API Docs: http://localhost:8001/docs
+echo   API Docs: http://localhost:9001/docs
 echo ====================================
 echo.
 echo Press any key to close this window

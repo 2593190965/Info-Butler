@@ -142,6 +142,11 @@ DIFY_WORKFLOW_ID=your-workflow-id
 
 # 飞书机器人（可选）
 FEISHU_WEBHOOK_URL=https://open.feishu.cn/open-apis/bot/v2/hook/your-webhook-id
+FEISHU_APP_ID=cli_xxxxxxxxxxxx
+FEISHU_APP_SECRET=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+FEISHU_ENCRYPT_KEY=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+FEISHU_VERIFICATION_TOKEN=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+FEISHU_REMINDER_ADVANCE_DAYS=1  # 提前多少天发送到期提醒
 ```
 
 ### 3. 前端 - 安装依赖
@@ -298,6 +303,8 @@ curl -X PATCH http://localhost:8001/api/v1/actions/1 \
 
 在 Dify 中创建 Workflow 类型应用：
 
+> 📘 详细配置指南请查看 [DIFY_WORKFLOW_GUIDE.md](./DIFY_WORKFLOW_GUIDE.md)
+
 **输入变量：**
 - `input_text` (string): 待处理的正文内容
 - `source_type` (string): 来源类型 (text/url)
@@ -335,6 +342,132 @@ curl -X PATCH http://localhost:8001/api/v1/actions/1 \
   "tags": ["标签1", "标签2", "标签3"]
 }
 ```
+
+## 飞书机器人配置
+
+### 1. 创建飞书应用
+
+1. 访问 [飞书开放平台](https://open.feishu.cn/)
+2. 创建企业自建应用
+3. 获取应用的 App ID 和 App Secret
+
+### 2. 配置应用权限
+
+在"权限管理"中开通以下权限：
+
+- `im:message` - 接收消息
+- `im:message:send_as_bot` - 以应用身份发消息
+- `contact:user.base:readonly` - 获取用户基本信息（可选）
+
+### 3. 配置事件订阅
+
+1. 在"事件订阅"页面，填写请求网址：
+   ```
+   https://your-domain.com/api/v1/webhook/feishu
+   ```
+
+2. 订阅以下事件：
+   - `im.message.receive_v1` - 接收消息
+
+3. 获取 Encrypt Key 和 Verification Token（用于验证回调请求）
+
+### 4. 配置环境变量
+
+将获取的配置填入 `.env` 文件：
+
+```env
+FEISHU_APP_ID=cli_xxxxxxxxxxxx
+FEISHU_APP_SECRET=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+FEISHU_ENCRYPT_KEY=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+FEISHU_VERIFICATION_TOKEN=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+FEISHU_REMINDER_ADVANCE_DAYS=1
+```
+
+### 5. 使用机器人
+
+在飞书中@机器人发送以下内容：
+
+#### 📝 添加待办事项
+
+直接发送任务描述，机器人会自动提取并创建待办事项：
+
+```
+@机器人 帮我定一个明天九点的闹钟
+```
+
+```
+@机器人 下周五之前完成项目报告
+```
+
+```
+@机器人 今天下午3点开会讨论新产品的设计方案
+```
+
+机器人会自动：
+- 提取待办事项
+- 识别截止时间
+- 设置优先级
+- 创建待办任务
+
+#### 📋 查询待办事项
+
+发送以下任一关键词查看待办列表：
+
+```
+@机器人 待办
+```
+
+```
+@机器人 我有什么待办事项
+```
+
+```
+@机器人 todo
+```
+
+机器人会按截止时间排序返回待办列表，并标记：
+- 📍 今天到期
+- 📍 明天到期
+- ⚠️ 已逾期
+
+#### 📄 处理信息
+
+发送文本或链接，机器人会自动生成摘要和待办事项：
+
+```
+@机器人 今天学习了Vue 3的组合式API，发现它比选项式API更灵活...
+```
+
+```
+@机器人 https://example.com/article
+```
+
+#### 💬 获取帮助
+
+```
+@机器人 帮助
+```
+
+### 6. 自动提醒
+
+系统会在以下时间主动发送飞书提醒：
+- **到期提醒**：每天 9:00 发送即将到期的待办提醒（提前天数可配置）
+- **逾期提醒**：每天 14:00 发送已逾期的待办提醒
+
+### 7. 账号关联
+
+Info-Butler 支持飞书账号与网页版账号关联：
+
+#### 自动关联（推荐）
+如果您的飞书邮箱与注册邮箱一致，首次使用时系统会自动关联。
+
+#### 手动绑定
+1. 在网页端【个人设置】生成绑定码
+2. 在飞书中发送：`绑定 A1B2C3`（替换为您的绑定码）
+
+> 📘 详细关联指南请查看 [FEISHU_ACCOUNT_BINDING.md](./FEISHU_ACCOUNT_BINDING.md)
+
+> 📘 详细使用示例请查看 [FEISHU_BOT_USAGE.md](./FEISHU_BOT_USAGE.md)
 
 ## 项目结构
 

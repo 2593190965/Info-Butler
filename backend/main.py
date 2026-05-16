@@ -37,6 +37,7 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    from backend.services.scheduler_service import scheduler_service
     from backend.workers.arq_client import close_arq_pool, get_arq_pool
 
     async with engine.begin() as conn:
@@ -47,7 +48,16 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning(f"Failed to connect to Redis/ARQ pool: {e}. Background tasks will not be available.")
 
+    # 启动定时任务调度器
+    try:
+        scheduler_service.start()
+    except Exception as e:
+        logger.warning(f"Failed to start scheduler: {e}. Scheduled tasks will not be available.")
+
     yield
+
+    # 关闭调度器
+    scheduler_service.shutdown()
 
     await close_arq_pool()
     await engine.dispose()

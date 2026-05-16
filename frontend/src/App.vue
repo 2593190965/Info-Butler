@@ -52,6 +52,7 @@ import {
   StatsChartOutline,
   PricetagsOutline,
   LogoRss,
+  SettingsOutline,
 } from '@vicons/ionicons5'
 import api from '@/api'
 
@@ -116,6 +117,11 @@ const menuOptions: MenuOption[] = [
     label: '周报复盘',
     key: '/review',
     icon: renderIcon(StatsChartOutline),
+  },
+  {
+    label: '个人设置',
+    key: '/settings',
+    icon: renderIcon(SettingsOutline),
   },
 ]
 

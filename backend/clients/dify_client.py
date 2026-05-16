@@ -106,8 +106,9 @@ class DifyClient:
             if isinstance(item, dict):
                 content = item.get("content", "").strip()
                 priority = item.get("priority", "medium")
+                due_date = item.get("due_date")
                 if content:
-                    action_items_processed.append({"content": content, "priority": priority})
+                    action_items_processed.append({"content": content, "priority": priority, "due_date": due_date})
             elif isinstance(item, str) and item.strip():
                 action_items_processed.append({"content": item.strip(), "priority": "medium"})
 

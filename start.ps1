@@ -21,7 +21,7 @@ if (-not $ROOT_DIR) {
 
 # Start backend
 Write-Host "[1/2] Starting backend..." -ForegroundColor Yellow
-$backendScript = "cd '$ROOT_DIR'; uv run uvicorn backend.main:app --host 0.0.0.0 --port 8001 --reload"
+$backendScript = "cd '$ROOT_DIR'; uv run uvicorn backend.main:app --host 0.0.0.0 --port 9001 --reload"
 Start-Process powershell -ArgumentList "-NoExit", "-Command", $backendScript -WindowTitle "Info-Butler-Backend"
 
 # Wait for backend to start
@@ -37,7 +37,7 @@ Write-Host "========================================" -ForegroundColor Green
 Write-Host "  Services Started!" -ForegroundColor Green
 Write-Host "========================================" -ForegroundColor Green
 Write-Host "  Backend:  " -NoNewline -ForegroundColor White
-Write-Host "http://localhost:8001" -ForegroundColor Cyan
+Write-Host "http://localhost:9001" -ForegroundColor Cyan
 Write-Host "  Frontend: " -NoNewline -ForegroundColor White
 Write-Host "http://localhost:5175" -ForegroundColor Cyan
 Write-Host "  API Docs: " -NoNewline -ForegroundColor White
